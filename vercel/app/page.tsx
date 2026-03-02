@@ -7,7 +7,7 @@ import AdminSessionPanel from "@/components/AdminSessionPanel";
 import TomorrowDraftPanel from "@/components/TomorrowDraftPanel";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
-import { getThreadsTokenExpiresAt } from "@/lib/threadsToken";
+import { checkThreadsTokenHealth, getThreadsTokenExpiresAt } from "@/lib/threadsToken";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,7 @@ async function getHomeData() {
     sources: sources || [],
     tomorrowDraft: tomorrowDraft || null,
     tokenExpiresAt: await getThreadsTokenExpiresAt(db),
+    tokenHealth: await checkThreadsTokenHealth(db),
   };
 }
 
@@ -163,6 +164,16 @@ export default async function HomePage() {
         ) : (
           <p>만료 정보 없음 (토큰 자동갱신 API가 1회 이상 성공하면 표시됩니다).</p>
         )}
+        <p>
+          활성 상태:{" "}
+          <strong style={{ color: data.tokenHealth.active ? "#0a7f2e" : "#b42318" }}>
+            {data.tokenHealth.active ? "정상" : "비정상"}
+          </strong>
+          {" / "}
+          코드: {data.tokenHealth.status || "-"}
+          {" / "}
+          상세: {data.tokenHealth.message}
+        </p>
       </section>
 
       <section>
