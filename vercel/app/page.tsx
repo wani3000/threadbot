@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import type { Signal } from "@/lib/types";
 import SourceManager from "@/components/SourceManager";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
+import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
 
 export const dynamic = "force-dynamic";
 
@@ -262,16 +263,14 @@ export default async function HomePage() {
         <h2>글 규칙 (자동생성)</h2>
         <ul>
           <li>하루 1개만 게시 (KST 기준)</li>
-          <li>5슬라이드 고정 (1/5~5/5)</li>
-          <li>한 문장 한 줄</li>
-          <li>짧은 구어체 존댓말</li>
-          <li>첫 슬라이드 훅: 질문형/반전형 + 숫자</li>
-          <li>전개: 공감 → 문제 → 내 경험 → 해결 → 행동 유도</li>
-          <li>슬라이드당 핵심 1개</li>
-          <li>이모지 1~2개 이내</li>
-          <li>마지막 슬라이드: 요약 1줄 + 부드러운 CTA</li>
-          <li>링크는 마지막 슬라이드에 1~2개</li>
+          {RULE_CHECKLIST.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
         </ul>
+        <details style={{ marginTop: 12 }}>
+          <summary>전체 글 스타일 & 콘텐츠 가이드 보기</summary>
+          <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{FULL_CONTENT_GUIDE}</pre>
+        </details>
       </section>
 
       <section>
