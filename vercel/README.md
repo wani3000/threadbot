@@ -40,6 +40,7 @@ Set these in Vercel Project Settings > Environment Variables.
 - `GET /api/cron/post` cron only
 - `GET/PATCH /api/drafts/:date?token=...` draft edit
 - `GET/POST /api/collection/sources` source list/add
+- `POST /api/collection/sources/sync` sync built-in default sources (admin token required)
 
 ## Threads publish note
 - This code uses official 2-step publish flow:

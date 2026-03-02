@@ -70,6 +70,23 @@ export default function SourceManager({ initial, editToken }: { initial: Source[
     setMsg(`추가 완료 (${data.added || 0}개)`);
   }
 
+  async function syncDefaults() {
+    setMsg("");
+    const res = await fetch("/api/collection/sources/sync", {
+      method: "POST",
+      headers: {
+        "x-edit-token": editToken || "",
+      },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setMsg(data.error || "동기화 실패");
+      return;
+    }
+    setSources((data.items || []) as Source[]);
+    setMsg(`기본 URL 동기화 완료 (신규 ${data.added || 0}개)`);
+  }
+
   return (
     <div>
       <p>총 {sources.filter((s) => s.enabled).length}개</p>
@@ -90,6 +107,7 @@ export default function SourceManager({ initial, editToken }: { initial: Source[
           ))}
       </ul>
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+        <button onClick={syncDefaults}>기본 수집 URL 자동 동기화</button>
         <input placeholder="소스 이름 (선택: 1개 입력 시만 적용)" value={name} onChange={(e) => setName(e.target.value)} />
         <textarea
           placeholder={"https://example.com/1\nhttps://example.com/2"}

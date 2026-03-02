@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { collectFromSource, collectFromThreadsKeywords, dedupeSignals } from "@/lib/collect";
 import { generatePost } from "@/lib/generate";
 import { sendDraftEmail } from "@/lib/email";
+import { syncDefaultSources } from "@/lib/sourceSync";
 import type { Signal, Source } from "@/lib/types";
 
 function kstDate(offsetDays = 0): string {
@@ -19,6 +20,7 @@ export async function GET(req: Request) {
   }
 
   const db = supabaseAdmin();
+  await syncDefaultSources(db);
   const today = kstDate(0);
   const targetDate = kstDate(1);
   const since = new Date();
