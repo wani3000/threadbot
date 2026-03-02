@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminAuthHeader, getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { ensureSupabaseBrowserClient, getAdminAuthHeader, getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 type SessionState = {
   loading: boolean;
@@ -20,6 +20,16 @@ export default function AdminSessionPanel() {
 
   async function checkSession() {
     try {
+      const ready = await ensureSupabaseBrowserClient();
+      if (!ready) {
+        setState({
+          loading: false,
+          authenticated: false,
+          email: null,
+          message: "Supabase 공개키 설정이 필요합니다.",
+        });
+        return;
+      }
       const headers = await getAdminAuthHeader();
       const res = await fetch("/api/admin/session", { headers, cache: "no-store" });
       const data = await res.json().catch(() => ({}));
@@ -45,6 +55,11 @@ export default function AdminSessionPanel() {
   }, []);
 
   async function loginWithGoogle() {
+    const ready = await ensureSupabaseBrowserClient();
+    if (!ready) {
+      setState((prev) => ({ ...prev, message: "Supabase 공개키 설정이 필요합니다." }));
+      return;
+    }
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
       setState((prev) => ({ ...prev, message: "Supabase 공개키 설정이 필요합니다." }));
