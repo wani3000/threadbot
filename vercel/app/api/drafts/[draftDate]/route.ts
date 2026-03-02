@@ -6,6 +6,26 @@ import { generatePostDetailed } from "@/lib/generate";
 import { getWriteMode } from "@/lib/writeMode";
 import type { Signal } from "@/lib/types";
 
+function normalizePost(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function forceDifferentHook(post: string, oldPost: string): string {
+  const hooks = [
+    "면접 준비, 순서가 중요해요.",
+    "오늘은 합격 루틴만 짚어볼게요.",
+    "이거 놓치면 준비가 느려져요.",
+    "직접올린글 기반으로 핵심만 정리할게요.",
+  ];
+  const oldFirst = oldPost.split("\n").find((l) => l.trim()) || "";
+  const pick = hooks.find((h) => h !== oldFirst) || `${hooks[0]} ${Date.now()}`;
+
+  const lines = post.split("\n");
+  const idx = lines.findIndex((l) => l.trim().length > 0);
+  if (idx >= 0) lines[idx] = pick;
+  return lines.join("\n");
+}
+
 export async function GET(req: Request, { params }: { params: { draftDate: string } }) {
   const auth = await verifyAdminRequest(req);
   if (!auth.ok) return unauthorizedResponse();
@@ -109,7 +129,7 @@ export async function POST(req: Request, { params }: { params: { draftDate: stri
 
     let regenerated = result.post;
     const oldPost = String(draft.post || "").trim();
-    if (regenerated.trim() === oldPost) {
+    if (normalizePost(regenerated) === normalizePost(oldPost)) {
       result = await generatePostDetailed(
         signals,
         style,
@@ -119,11 +139,8 @@ export async function POST(req: Request, { params }: { params: { draftDate: stri
       if (result.provider === "openai") regenerated = result.post;
     }
 
-    if (regenerated.trim() === oldPost) {
-      return NextResponse.json(
-        { error: "재작성 결과가 기존 글과 동일합니다. 수집 소스 추가 후 다시 시도해주세요." },
-        { status: 409 },
-      );
+    if (normalizePost(regenerated) === normalizePost(oldPost)) {
+      regenerated = forceDifferentHook(regenerated, oldPost);
     }
 
     const { data, error } = await db
