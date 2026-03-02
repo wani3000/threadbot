@@ -8,32 +8,39 @@ export default function SourceManager({ initial }: { initial: Source[] }) {
   const [sources, setSources] = useState(initial);
   const [token, setToken] = useState("");
   const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
+  const [urlText, setUrlText] = useState("");
   const [msg, setMsg] = useState("");
 
   async function addSource() {
     setMsg("");
+    const urls = urlText
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     const res = await fetch("/api/collection/sources", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-edit-token": token,
       },
-      body: JSON.stringify({ name, url }),
+      body: JSON.stringify({ name, urls }),
     });
     const data = await res.json();
     if (!res.ok) {
       setMsg(data.error || "추가 실패");
       return;
     }
-    setSources((prev) => [...prev, data]);
+    const added = (data.items || []) as Source[];
+    setSources((prev) => [...prev, ...added]);
     setName("");
-    setUrl("");
-    setMsg("추가 완료");
+    setUrlText("");
+    setMsg(`추가 완료 (${data.added || 0}개)`);
   }
 
   return (
     <div>
+      <p>총 {sources.filter((s) => s.enabled).length}개</p>
       <ul>
         {sources.filter((s) => s.enabled).map((s) => (
           <li key={s.id || `${s.name}-${s.url}`}>{s.name}: {s.url}</li>
@@ -41,9 +48,14 @@ export default function SourceManager({ initial }: { initial: Source[] }) {
       </ul>
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
         <input placeholder="EDIT_TOKEN" value={token} onChange={(e) => setToken(e.target.value)} />
-        <input placeholder="소스 이름" value={name} onChange={(e) => setName(e.target.value)} />
-        <input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
-        <button onClick={addSource}>URL 추가하기</button>
+        <input placeholder="소스 이름 (선택: 1개 입력 시만 적용)" value={name} onChange={(e) => setName(e.target.value)} />
+        <textarea
+          placeholder={"https://example.com/1\nhttps://example.com/2"}
+          value={urlText}
+          onChange={(e) => setUrlText(e.target.value)}
+          rows={5}
+        />
+        <button onClick={addSource}>URL 직접 추가하기</button>
         {msg ? <p>{msg}</p> : null}
       </div>
     </div>
