@@ -19,6 +19,15 @@ function kstWeekday(): number {
   return Number(new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).getDay());
 }
 
+function influencerSourcePriority(source: Source): number {
+  const v = `${source.name} ${source.url}`.toLowerCase();
+  if (v.includes("threads.com")) return 0;
+  if (v.includes("blog.naver.com")) return 1;
+  if (v.includes("instagram.com")) return 2;
+  if (v.includes("facebook.com")) return 3;
+  return 4;
+}
+
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -44,7 +53,9 @@ export async function GET(req: Request) {
   const sourceList = (sources || []) as Source[];
   const officialWeekday = Number(getEnv("OFFICIAL_SOURCE_WEEKDAY", "1")); // 0=Sun, 1=Mon ...
   const includeOfficialToday = kstWeekday() === officialWeekday;
-  const influencerSources = sourceList.filter((s) => !isOfficialRecruitSource(s));
+  const influencerSources = sourceList
+    .filter((s) => !isOfficialRecruitSource(s))
+    .sort((a, b) => influencerSourcePriority(a) - influencerSourcePriority(b));
   const officialSources = sourceList.filter((s) => isOfficialRecruitSource(s));
   const baseTargets = includeOfficialToday ? [...influencerSources, ...officialSources] : influencerSources;
   const sourceTargets = quick ? baseTargets.slice(0, 12) : baseTargets;
