@@ -1,27 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 
 type Source = { id?: string; name: string; url: string; enabled: boolean };
-
-function isOfficialRecruitSource(source: Source): boolean {
-  const v = `${source.name} ${source.url}`.toLowerCase();
-  return (
-    v.includes("recruiter.co.kr") ||
-    v.includes("recruit.") ||
-    v.includes("careers.") ||
-    v.includes("/careers") ||
-    v.includes("/career") ||
-    v.includes("koreanair.recruiter.co.kr") ||
-    v.includes("flyasiana.recruiter.co.kr") ||
-    v.includes("/career/") ||
-    v.includes("/recruit") ||
-    v.includes("/apply") ||
-    v.includes("flight-attendant") ||
-    v.includes("cabin-crew") ||
-    v.includes("employ")
-  );
-}
 
 export default function SourceManager({ initial, editToken }: { initial: Source[]; editToken?: string }) {
   const [sources, setSources] = useState(initial);

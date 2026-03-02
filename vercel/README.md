@@ -17,6 +17,7 @@ Set these in Vercel Project Settings > Environment Variables.
 - `THREADS_SEARCH_MAX_QUERIES` (optional, default `12`)
 - `THREADS_FETCH_TIMEOUT_MS` (optional, default `7000`)
 - `SOURCE_FETCH_TIMEOUT_MS` (optional, default `8000`)
+- `OFFICIAL_SOURCE_WEEKDAY` (optional, default `1` = Monday KST, official airline sources collected weekly only)
 - `RESEND_API_KEY`
 - `EMAIL_FROM` (Resend verified sender, e.g. `ThreadBot <noreply@yourdomain.com>`)
 - `EMAIL_TO` (`oxaz1234@gmail.com`)
@@ -37,6 +38,10 @@ Set these in Vercel Project Settings > Environment Variables.
 ## 4) Cron schedules (already in `vercel.json`, UTC)
 - `59 14 * * *` -> KST 23:59 collect/write tomorrow draft + email
 - `0 0 * * *` -> KST 09:00 auto post
+
+Collection policy:
+- Influencer/instructor sources: daily
+- Official airline recruitment sources: weekly (KST weekday controlled by `OFFICIAL_SOURCE_WEEKDAY`)
 
 ## 5) Endpoints
 - `GET /api/cron/morning` cron only

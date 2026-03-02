@@ -5,6 +5,7 @@ import { collectFromSource, collectFromThreadsKeywords, dedupeSignals } from "@/
 import { generatePost } from "@/lib/generate";
 import { sendDraftEmail } from "@/lib/email";
 import { syncDefaultSources } from "@/lib/sourceSync";
+import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import type { Signal, Source } from "@/lib/types";
 
 function kstDate(offsetDays = 0): string {
@@ -12,6 +13,10 @@ function kstDate(offsetDays = 0): string {
   const kstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
   kstNow.setDate(kstNow.getDate() + offsetDays);
   return kstNow.toISOString().slice(0, 10);
+}
+
+function kstWeekday(): number {
+  return Number(new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).getDay());
 }
 
 export async function GET(req: Request) {
@@ -37,7 +42,12 @@ export async function GET(req: Request) {
 
   const allSignals: Signal[] = [];
   const sourceList = (sources || []) as Source[];
-  const sourceTargets = quick ? sourceList.slice(0, 12) : sourceList;
+  const officialWeekday = Number(getEnv("OFFICIAL_SOURCE_WEEKDAY", "1")); // 0=Sun, 1=Mon ...
+  const includeOfficialToday = kstWeekday() === officialWeekday;
+  const influencerSources = sourceList.filter((s) => !isOfficialRecruitSource(s));
+  const officialSources = sourceList.filter((s) => isOfficialRecruitSource(s));
+  const baseTargets = includeOfficialToday ? [...influencerSources, ...officialSources] : influencerSources;
+  const sourceTargets = quick ? baseTargets.slice(0, 12) : baseTargets;
   const settled = await Promise.allSettled(sourceTargets.map((source) => collectFromSource(source, since.toISOString())));
   for (const s of settled) {
     if (s.status === "fulfilled") allSignals.push(...s.value);
@@ -94,6 +104,9 @@ export async function GET(req: Request) {
     signals: signals.length,
     sourceSignals: allSignals.length - keywordSignals.length,
     keywordSignals: keywordSignals.length,
+    includeOfficialToday,
+    officialSources: officialSources.length,
+    influencerSources: influencerSources.length,
     targetDate,
     editUrl,
   });
