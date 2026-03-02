@@ -1,0 +1,32 @@
+[project]
+name = "threadbot"
+version = "0.1.0"
+description = "Weekly airline hiring signal collector and Threads post generator"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "beautifulsoup4>=4.12.3",
+  "feedparser>=6.0.11",
+  "openai>=1.66.2",
+  "python-dateutil>=2.9.0.post0",
+  "python-dotenv>=1.0.1",
+  "PyYAML>=6.0.2",
+  "requests>=2.32.3",
+  "streamlit>=1.44.0",
+]
+
+[project.scripts]
+weekly_collect = "threadbot.cli:weekly_collect"
+daily_post = "threadbot.cli:daily_post"
+morning_prepare = "threadbot.cli:morning_prepare"
+threadbot_dashboard = "threadbot.dashboard:run_dashboard"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

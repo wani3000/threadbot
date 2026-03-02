@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+src/*.egg-info/
+
+# Local env
+.env
+
+# Data outputs
+data/outputs/
+
+# Node/Next
+vercel/node_modules/
+vercel/.next/
+
+# OS
+.DS_Store

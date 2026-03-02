@@ -1,0 +1,84 @@
+import { NextResponse } from "next/server";
+import { baseUrl, getEnv, isAuthorizedCron } from "@/lib/env";
+import { supabaseAdmin } from "@/lib/supabase";
+import { collectFromSource, dedupeSignals } from "@/lib/collect";
+import { generatePost } from "@/lib/generate";
+import { sendDraftEmail } from "@/lib/email";
+import type { Signal, Source } from "@/lib/types";
+
+function kstDate(): string {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
+}
+
+export async function GET(req: Request) {
+  if (!isAuthorizedCron(req)) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const db = supabaseAdmin();
+  const today = kstDate();
+  const since = new Date();
+  since.setDate(since.getDate() - 7);
+
+  const { data: sources, error: sourceErr } = await db
+    .from("sources")
+    .select("name,url,enabled")
+    .eq("enabled", true);
+  if (sourceErr) {
+    return NextResponse.json({ error: sourceErr.message }, { status: 500 });
+  }
+
+  const allSignals: Signal[] = [];
+  for (const source of (sources || []) as Source[]) {
+    try {
+      const rows = await collectFromSource(source, since.toISOString());
+      allSignals.push(...rows);
+    } catch {
+      // keep partial success
+    }
+  }
+  const signals = dedupeSignals(allSignals);
+
+  if (signals.length > 0) {
+    await db.from("signals").insert(
+      signals.map((s) => ({
+        ...s,
+        signal_date: today,
+      })),
+    );
+  }
+
+  const styleSample = getEnv("STYLE_SAMPLE", "친근한 승무원 취업 코칭 톤");
+  const post = await generatePost(signals, styleSample);
+
+  const { data: draftRow, error: draftErr } = await db
+    .from("drafts")
+    .upsert(
+      {
+        draft_date: today,
+        post,
+        source_json: signals,
+        status: "pending",
+        approved: false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "draft_date" },
+    )
+    .select("id,draft_date")
+    .single();
+
+  if (draftErr) {
+    return NextResponse.json({ error: draftErr.message }, { status: 500 });
+  }
+
+  const editUrl = `${baseUrl()}/edit?date=${today}&token=${encodeURIComponent(getEnv("EDIT_TOKEN"))}`;
+  await sendDraftEmail({
+    to: getEnv("EMAIL_TO"),
+    from: getEnv("EMAIL_FROM"),
+    subject: `[ThreadBot] ${today} 09:00 자동게시 전 초안`,
+    post,
+    editUrl,
+  });
+
+  return NextResponse.json({ ok: true, draft: draftRow, signals: signals.length, editUrl });
+}
