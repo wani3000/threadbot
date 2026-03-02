@@ -15,6 +15,10 @@ function kstDate(offsetDays = 0): string {
   return kstNow.toISOString().slice(0, 10);
 }
 
+function kstStartIso(dateKst: string): string {
+  return new Date(`${dateKst}T00:00:00+09:00`).toISOString();
+}
+
 async function getHomeData() {
   const db = supabaseAdmin();
   const tomorrow = kstDate(1);
@@ -62,8 +66,12 @@ function seriesRecommended(signals: Signal[]) {
   ];
 }
 
-function ongoing(signals: Signal[]) {
-  return signals.filter((s) => /채용|모집|승무원|객실|recruit|hiring/i.test(`${s.title} ${s.summary}`)).slice(0, 20);
+function ongoingOfficialCabin(signals: Signal[], todayKstIso: string) {
+  return signals
+    .filter((s) => isOfficialRecruitSource({ name: s.source_name || "", url: s.source_url || "" }))
+    .filter((s) => /승무원|객실|cabin|flight attendant/i.test(`${s.title} ${s.summary} ${s.role || ""}`))
+    .filter((s) => !s.published_at || s.published_at >= todayKstIso)
+    .slice(0, 30);
 }
 
 function summarizeCollected(signals: Signal[]) {
@@ -119,6 +127,7 @@ function keywordStats(signals: Signal[]) {
 
 export default async function HomePage() {
   const data = await getHomeData();
+  const todayKstIso = kstStartIso(kstDate(0));
   const recos = recommended(data.signals);
   const seriesRecos = seriesRecommended(data.signals);
   const keywordRows = keywordStats(data.signals);
@@ -211,12 +220,34 @@ export default async function HomePage() {
 
       <section>
         <h2>4. 최근 승무원 채용 정보(진행중)</h2>
-        {ongoing(data.signals).map((s) => (
-          <article key={`${s.title}-${s.link}`} style={{ marginBottom: 8 }}>
-            <a href={s.link} target="_blank">{s.title}</a>
-            <div style={{ color: "#555", fontSize: 13 }}>{s.summary}</div>
-          </article>
-        ))}
+        {ongoingOfficialCabin(data.signals, todayKstIso).length === 0 ? (
+          <p>오늘 이후 갱신된 공식 캐빈/승무원 채용 공고가 없습니다.</p>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>일자</th>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>항공사</th>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>직군</th>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>공고</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ongoingOfficialCabin(data.signals, todayKstIso).map((s) => (
+                <tr key={`${s.title}-${s.link}`}>
+                  <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>
+                    {s.published_at ? new Date(s.published_at).toLocaleString("ko-KR") : "-"}
+                  </td>
+                  <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{s.airline || "-"}</td>
+                  <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{s.role || "객실/승무원 관련"}</td>
+                  <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>
+                    <a href={s.link} target="_blank">{s.title}</a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <section>

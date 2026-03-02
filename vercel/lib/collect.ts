@@ -147,7 +147,7 @@ export async function collectFromSource(source: Source, sinceIso: string): Promi
         link: row.loc,
         published_at: row.published ? row.published.toISOString() : null,
         airline: parseAirline(`${source.name} ${source.url} ${row.loc}`),
-        role: row.loc.toLowerCase().includes("cabin") ? "승무원" : null,
+        role: /cabin|crew|flight-attendant|flight_attendant|객실|승무원/i.test(row.loc) ? "승무원" : null,
         summary,
         confidence: "high" as const,
       };
