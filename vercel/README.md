@@ -40,6 +40,7 @@ Set these in Vercel Project Settings > Environment Variables.
 ## 4) Cron schedules (already in `vercel.json`, UTC)
 - `59 14 * * *` -> KST 23:59 collect/write tomorrow draft + email
 - `0 0 * * *` -> KST 09:00 auto post
+- `10 15 * * *` -> KST 00:10 Threads long-lived token refresh
 
 Collection policy:
 - Influencer/instructor sources: daily
@@ -65,6 +66,9 @@ Collection policy:
 - Keyword discovery uses official endpoint:
   - `GET /keyword_search` with `q`, `search_type`, `search_mode`, `since`, `until`, `limit`, `fields`
   - Requires proper Threads permissions (e.g. keyword search scope approved in Meta App Review).
+- Token operations:
+  - `GET /api/cron/token-refresh` refreshes a long-lived Threads token (`th_refresh_token`) and stores latest token/expiry in Supabase.
+  - Post cron (`/api/cron/post`) also auto-attempts one refresh/retry when token error(code 190) is detected.
 
 ## 6) Email edit flow
 Morning email includes tomorrow 09:00 scheduled draft link:

@@ -1,7 +1,10 @@
 const GRAPH_BASE = (process.env.THREADS_GRAPH_BASE || "https://graph.threads.net").replace(/\/$/, "");
 
-export async function publishThreads(postText: string): Promise<{ ok: boolean; status: number; body: unknown }> {
-  const token = process.env.THREADS_PUBLISH_TOKEN || "";
+export async function publishThreads(
+  postText: string,
+  tokenArg?: string,
+): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const token = tokenArg || process.env.THREADS_PUBLISH_TOKEN || "";
 
   // 1) Create text thread media container
   const createBody = new URLSearchParams({

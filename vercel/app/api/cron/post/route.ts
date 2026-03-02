@@ -3,6 +3,7 @@ import { isAuthorizedCron } from "@/lib/env";
 import { notFoundResponse, serverErrorResponse, unauthorizedResponse } from "@/lib/apiError";
 import { supabaseAdmin } from "@/lib/supabase";
 import { publishThreads } from "@/lib/threads";
+import { getThreadsPublishToken, isThreadsTokenError, refreshThreadsLongLivedToken, setThreadsPublishToken } from "@/lib/threadsToken";
 
 function kstDate(): string {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
@@ -48,7 +49,17 @@ export async function GET(req: Request) {
     });
   }
 
-  const publish = await publishThreads(draft.post);
+  const token = await getThreadsPublishToken(db);
+  let publish = await publishThreads(draft.post, token);
+
+  if (!publish.ok && isThreadsTokenError(publish)) {
+    const refreshed = await refreshThreadsLongLivedToken(token);
+    if (refreshed.ok && refreshed.accessToken) {
+      await setThreadsPublishToken(db, refreshed.accessToken, refreshed.expiresIn);
+      publish = await publishThreads(draft.post, refreshed.accessToken);
+    }
+  }
+
   await db.from("posts").insert({
     draft_id: draft.id,
     post: draft.post,
