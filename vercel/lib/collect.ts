@@ -32,6 +32,27 @@ function parseAirline(text: string): string | null {
   return null;
 }
 
+function isNaverBlogSourceUrl(raw: string): boolean {
+  const low = raw.toLowerCase();
+  return low.includes("blog.naver.com/");
+}
+
+function isOfficialRecruitUrl(raw: string): boolean {
+  const low = raw.toLowerCase();
+  return (
+    low.includes("recruiter.co.kr") ||
+    low.includes("recruit.") ||
+    low.includes("careers.") ||
+    low.includes("/careers") ||
+    low.includes("/career") ||
+    low.includes("/recruit") ||
+    low.includes("/apply") ||
+    low.includes("flight-attendant") ||
+    low.includes("cabin-crew") ||
+    low.includes("employ")
+  );
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -89,6 +110,10 @@ function toConfidence(score: number): "high" | "medium" | "low" {
 }
 
 export async function collectFromSource(source: Source, sinceIso: string): Promise<Signal[]> {
+  if (isNaverBlogSourceUrl(source.url)) {
+    return collectFromNaverBlogRss(source, sinceIso);
+  }
+
   const url = new URL(source.url);
   const sitemapUrl = `${url.protocol}//${url.host}/sitemap.xml`;
   const res = await fetchWithTimeout(sitemapUrl, { cache: "no-store" }, Number(process.env.SOURCE_FETCH_TIMEOUT_MS || "8000"));
@@ -129,7 +154,52 @@ export async function collectFromSource(source: Source, sinceIso: string): Promi
     });
 }
 
-export async function collectFromThreadsKeywords(sinceIso: string): Promise<Signal[]> {
+async function collectFromNaverBlogRss(source: Source, sinceIso: string): Promise<Signal[]> {
+  const sourceUrl = new URL(source.url);
+  const path = sourceUrl.pathname.replace(/^\/+|\/+$/g, "");
+  const blogId = path.split("/")[0];
+  if (!blogId) return [];
+
+  const rssUrl = `https://rss.blog.naver.com/${blogId}.xml`;
+  const res = await fetchWithTimeout(rssUrl, { cache: "no-store" }, Number(process.env.SOURCE_FETCH_TIMEOUT_MS || "8000"));
+  if (!res.ok) return [];
+
+  const xml = await res.text();
+  const parsed = await parseStringPromise(xml, { explicitArray: false, trim: true });
+  const rows = parsed?.rss?.channel?.item;
+  if (!rows) return [];
+
+  const list = Array.isArray(rows) ? rows : [rows];
+  const since = new Date(sinceIso);
+  return list
+    .map((row: { title?: string; link?: string; pubDate?: string; description?: string }) => {
+      const published = row.pubDate ? new Date(row.pubDate) : null;
+      const summary = (row.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      return {
+        title: row.title || "네이버 블로그 글",
+        link: row.link || source.url,
+        published,
+        summary,
+      };
+    })
+    .filter((row: { published: Date | null }) => !row.published || row.published >= since)
+    .map((row: { title: string; link: string; published: Date | null; summary: string }) => ({
+      source_name: source.name,
+      source_url: source.url,
+      title: `네이버블로그: ${row.title}`,
+      link: row.link,
+      published_at: row.published ? row.published.toISOString() : null,
+      airline: parseAirline(`${row.title} ${row.summary}`),
+      role: /승무원|cabin|flight attendant/i.test(`${row.title} ${row.summary}`) ? "승무원" : null,
+      summary: row.summary || "승무원/항공사 관련 블로그 업데이트입니다.",
+      confidence: "medium" as const,
+    }));
+}
+
+export async function collectFromThreadsKeywords(
+  sinceIso: string,
+  options?: { maxQueries?: number; pages?: number; limit?: number; minScore?: number },
+): Promise<Signal[]> {
   const token = process.env.THREADS_DISCOVERY_TOKEN || process.env.THREADS_PUBLISH_TOKEN || "";
   if (!token) return [];
 
@@ -143,13 +213,13 @@ export async function collectFromThreadsKeywords(sinceIso: string): Promise<Sign
     ),
   );
   const expanded = expandThreadsQueries(baseQueries);
-  const maxQueries = Number(process.env.THREADS_SEARCH_MAX_QUERIES || "12");
+  const maxQueries = options?.maxQueries ?? Number(process.env.THREADS_SEARCH_MAX_QUERIES || "12");
   const queries = expanded.slice(0, Math.max(1, Math.min(30, maxQueries)));
   if (queries.length === 0) return [];
 
-  const limit = Number(process.env.THREADS_SEARCH_LIMIT || "25");
-  const pages = Number(process.env.THREADS_SEARCH_PAGES || "1");
-  const minScore = Number(process.env.THREADS_SEARCH_MIN_SCORE || "4");
+  const limit = options?.limit ?? Number(process.env.THREADS_SEARCH_LIMIT || "25");
+  const pages = options?.pages ?? Number(process.env.THREADS_SEARCH_PAGES || "1");
+  const minScore = options?.minScore ?? Number(process.env.THREADS_SEARCH_MIN_SCORE || "4");
   const until = new Date().toISOString();
   const items: Signal[] = [];
 
@@ -225,6 +295,26 @@ export function dedupeSignals(signals: Signal[]): Signal[] {
     if (!map.has(key)) map.set(key, item);
   }
   return [...map.values()].sort((a, b) => {
+    const at = a.published_at ? new Date(a.published_at).getTime() : 0;
+    const bt = b.published_at ? new Date(b.published_at).getTime() : 0;
+    return bt - at;
+  });
+}
+
+function signalPriority(s: Signal): number {
+  const src = `${s.source_name} ${s.source_url}`.toLowerCase();
+  if (s.source_name.startsWith("threads-keyword:") || src.includes("threads.com")) return 0;
+  if (src.includes("blog.naver.com") || src.includes("rss.blog.naver.com")) return 1;
+  if (src.includes("instagram.com") || src.includes("facebook.com")) return 2;
+  if (isOfficialRecruitUrl(src)) return 4;
+  return 3;
+}
+
+export function prioritizeSignals(signals: Signal[]): Signal[] {
+  return [...signals].sort((a, b) => {
+    const pa = signalPriority(a);
+    const pb = signalPriority(b);
+    if (pa !== pb) return pa - pb;
     const at = a.published_at ? new Date(a.published_at).getTime() : 0;
     const bt = b.published_at ? new Date(b.published_at).getTime() : 0;
     return bt - at;

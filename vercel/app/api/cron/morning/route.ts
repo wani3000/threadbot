@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { baseUrl, getEnv, isAuthorizedCron } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
-import { collectFromSource, collectFromThreadsKeywords, dedupeSignals } from "@/lib/collect";
+import { collectFromSource, collectFromThreadsKeywords, dedupeSignals, prioritizeSignals } from "@/lib/collect";
 import { generatePost } from "@/lib/generate";
 import { sendDraftEmail } from "@/lib/email";
 import { syncDefaultSources } from "@/lib/sourceSync";
@@ -52,9 +52,11 @@ export async function GET(req: Request) {
   for (const s of settled) {
     if (s.status === "fulfilled") allSignals.push(...s.value);
   }
-  const keywordSignals = quick ? [] : await collectFromThreadsKeywords(since.toISOString());
+  const keywordSignals = quick
+    ? await collectFromThreadsKeywords(since.toISOString(), { maxQueries: 5, pages: 1, limit: 12, minScore: 3 })
+    : await collectFromThreadsKeywords(since.toISOString());
   allSignals.push(...keywordSignals);
-  const signals = dedupeSignals(allSignals);
+  const signals = prioritizeSignals(dedupeSignals(allSignals));
 
   if (signals.length > 0) {
     await db.from("signals").insert(
