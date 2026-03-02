@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ManualIngestForm({ editToken }: { editToken?: string }) {
+  const router = useRouter();
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
@@ -27,6 +29,7 @@ export default function ManualIngestForm({ editToken }: { editToken?: string }) 
     }
     setMsg(`저장 완료: ${data.saved || 0}건`);
     setText("");
+    router.refresh();
   }
 
   return (
