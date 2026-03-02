@@ -42,6 +42,9 @@ Set these in Vercel Project Settings > Environment Variables.
 Collection policy:
 - Influencer/instructor sources: daily
 - Official airline recruitment sources: weekly (KST weekday controlled by `OFFICIAL_SOURCE_WEEKDAY`)
+- Writing mode:
+  - `crawl`: generate from crawling signals
+  - `direct`: generate from manually uploaded texts
 
 ## 5) Endpoints
 - `GET /api/cron/morning` cron only
@@ -49,6 +52,8 @@ Collection policy:
 - `GET/PATCH /api/drafts/:date?token=...` draft edit
 - `GET/POST /api/collection/sources` source list/add
 - `POST /api/collection/sources/sync` sync built-in default sources (admin token required)
+- `GET/POST /api/write-mode` get/set writing mode
+- `GET/POST /api/manual/ingest` list/save manually pasted text corpus
 
 ## Threads publish note
 - This code uses official 2-step publish flow:

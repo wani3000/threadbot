@@ -6,6 +6,7 @@ import { generatePost } from "@/lib/generate";
 import { sendDraftEmail } from "@/lib/email";
 import { syncDefaultSources } from "@/lib/sourceSync";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
+import { getWriteMode } from "@/lib/writeMode";
 import type { Signal, Source } from "@/lib/types";
 
 function kstDate(offsetDays = 0): string {
@@ -36,37 +37,57 @@ export async function GET(req: Request) {
 
   const db = supabaseAdmin();
   await syncDefaultSources(db);
+  const writeMode = await getWriteMode(db);
   const today = kstDate(0);
   const targetDate = kstDate(1);
   const since = new Date();
   since.setDate(since.getDate() - 7);
 
-  const { data: sources, error: sourceErr } = await db
-    .from("sources")
-    .select("name,url,enabled")
-    .eq("enabled", true);
-  if (sourceErr) {
-    return NextResponse.json({ error: sourceErr.message }, { status: 500 });
+  const allSignals: Signal[] = [];
+  let keywordSignals: Signal[] = [];
+  let includeOfficialToday = false;
+  let officialSourcesCount = 0;
+  let influencerSourcesCount = 0;
+
+  if (writeMode === "direct") {
+    const { data: manualRows } = await db
+      .from("signals")
+      .select("source_name,source_url,title,link,published_at,airline,role,summary,confidence,created_at")
+      .eq("source_name", "manual-upload")
+      .gte("created_at", since.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(300);
+    allSignals.push(...((manualRows || []) as Signal[]));
+  } else {
+    const { data: sources, error: sourceErr } = await db
+      .from("sources")
+      .select("name,url,enabled")
+      .eq("enabled", true);
+    if (sourceErr) {
+      return NextResponse.json({ error: sourceErr.message }, { status: 500 });
+    }
+
+    const sourceList = (sources || []) as Source[];
+    const officialWeekday = Number(getEnv("OFFICIAL_SOURCE_WEEKDAY", "1")); // 0=Sun, 1=Mon ...
+    includeOfficialToday = kstWeekday() === officialWeekday;
+    const influencerSources = sourceList
+      .filter((s) => !isOfficialRecruitSource(s))
+      .sort((a, b) => influencerSourcePriority(a) - influencerSourcePriority(b));
+    const officialSources = sourceList.filter((s) => isOfficialRecruitSource(s));
+    influencerSourcesCount = influencerSources.length;
+    officialSourcesCount = officialSources.length;
+    const baseTargets = includeOfficialToday ? [...influencerSources, ...officialSources] : influencerSources;
+    const sourceTargets = quick ? baseTargets.slice(0, 12) : baseTargets;
+    const settled = await Promise.allSettled(sourceTargets.map((source) => collectFromSource(source, since.toISOString())));
+    for (const s of settled) {
+      if (s.status === "fulfilled") allSignals.push(...s.value);
+    }
+    keywordSignals = quick
+      ? await collectFromThreadsKeywords(since.toISOString(), { maxQueries: 5, pages: 1, limit: 12, minScore: 3 })
+      : await collectFromThreadsKeywords(since.toISOString());
+    allSignals.push(...keywordSignals);
   }
 
-  const allSignals: Signal[] = [];
-  const sourceList = (sources || []) as Source[];
-  const officialWeekday = Number(getEnv("OFFICIAL_SOURCE_WEEKDAY", "1")); // 0=Sun, 1=Mon ...
-  const includeOfficialToday = kstWeekday() === officialWeekday;
-  const influencerSources = sourceList
-    .filter((s) => !isOfficialRecruitSource(s))
-    .sort((a, b) => influencerSourcePriority(a) - influencerSourcePriority(b));
-  const officialSources = sourceList.filter((s) => isOfficialRecruitSource(s));
-  const baseTargets = includeOfficialToday ? [...influencerSources, ...officialSources] : influencerSources;
-  const sourceTargets = quick ? baseTargets.slice(0, 12) : baseTargets;
-  const settled = await Promise.allSettled(sourceTargets.map((source) => collectFromSource(source, since.toISOString())));
-  for (const s of settled) {
-    if (s.status === "fulfilled") allSignals.push(...s.value);
-  }
-  const keywordSignals = quick
-    ? await collectFromThreadsKeywords(since.toISOString(), { maxQueries: 5, pages: 1, limit: 12, minScore: 3 })
-    : await collectFromThreadsKeywords(since.toISOString());
-  allSignals.push(...keywordSignals);
   const signals = prioritizeSignals(dedupeSignals(allSignals));
 
   if (signals.length > 0) {
@@ -113,13 +134,14 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     quick,
+    writeMode,
     draft: draftRow,
     signals: signals.length,
     sourceSignals: allSignals.length - keywordSignals.length,
     keywordSignals: keywordSignals.length,
     includeOfficialToday,
-    officialSources: officialSources.length,
-    influencerSources: influencerSources.length,
+    officialSources: officialSourcesCount,
+    influencerSources: influencerSourcesCount,
     targetDate,
     editUrl,
   });

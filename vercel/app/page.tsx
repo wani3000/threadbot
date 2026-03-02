@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Signal } from "@/lib/types";
 import SourceManager from "@/components/SourceManager";
+import WriteModeSelector from "@/components/WriteModeSelector";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
 
@@ -129,6 +130,14 @@ export default async function HomePage() {
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "24px", fontFamily: "system-ui, sans-serif" }}>
       <h1>ThreadBot Dashboard (Vercel)</h1>
+
+      <section>
+        <h2>작성 방식 선택</h2>
+        <WriteModeSelector editToken={process.env.EDIT_TOKEN} />
+        <p style={{ marginTop: 8 }}>
+          <Link href="/upload">정보올리기 페이지로 이동</Link>
+        </p>
+      </section>
 
       <section>
         <h2>1. 최근 실제 게시글 (7일)</h2>
