@@ -18,6 +18,7 @@ export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const quick = new URL(req.url).searchParams.get("quick") === "1";
 
   const db = supabaseAdmin();
   await syncDefaultSources(db);
@@ -36,11 +37,12 @@ export async function GET(req: Request) {
 
   const allSignals: Signal[] = [];
   const sourceList = (sources || []) as Source[];
-  const settled = await Promise.allSettled(sourceList.map((source) => collectFromSource(source, since.toISOString())));
+  const sourceTargets = quick ? sourceList.slice(0, 12) : sourceList;
+  const settled = await Promise.allSettled(sourceTargets.map((source) => collectFromSource(source, since.toISOString())));
   for (const s of settled) {
     if (s.status === "fulfilled") allSignals.push(...s.value);
   }
-  const keywordSignals = await collectFromThreadsKeywords(since.toISOString());
+  const keywordSignals = quick ? [] : await collectFromThreadsKeywords(since.toISOString());
   allSignals.push(...keywordSignals);
   const signals = dedupeSignals(allSignals);
 
@@ -87,6 +89,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    quick,
     draft: draftRow,
     signals: signals.length,
     sourceSignals: allSignals.length - keywordSignals.length,
