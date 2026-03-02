@@ -27,7 +27,7 @@ Set these in Vercel Project Settings > Environment Variables.
 3. Deploy.
 
 ## 4) Cron schedules (already in `vercel.json`, UTC)
-- `0 22 * * *` -> KST 07:00 morning draft + email
+- `0 22 * * *` -> KST 07:00 collect/write tomorrow draft + email
 - `0 0 * * *` -> KST 09:00 auto post
 
 ## 5) Endpoints
@@ -42,7 +42,7 @@ Set these in Vercel Project Settings > Environment Variables.
   2. `POST /me/threads_publish` with `creation_id`
 
 ## 6) Email edit flow
-Morning email includes link:
+Morning email includes tomorrow 09:00 scheduled draft link:
 - `${APP_BASE_URL}/edit?date=YYYY-MM-DD&token=${EDIT_TOKEN}`
 
-Edit and approve there before 09:00 post.
+Edit and approve there before next-day 09:00 post.

@@ -6,8 +6,11 @@ import { generatePost } from "@/lib/generate";
 import { sendDraftEmail } from "@/lib/email";
 import type { Signal, Source } from "@/lib/types";
 
-function kstDate(): string {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
+function kstDate(offsetDays = 0): string {
+  const now = new Date();
+  const kstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  kstNow.setDate(kstNow.getDate() + offsetDays);
+  return kstNow.toISOString().slice(0, 10);
 }
 
 export async function GET(req: Request) {
@@ -16,7 +19,8 @@ export async function GET(req: Request) {
   }
 
   const db = supabaseAdmin();
-  const today = kstDate();
+  const today = kstDate(0);
+  const targetDate = kstDate(1);
   const since = new Date();
   since.setDate(since.getDate() - 7);
 
@@ -55,7 +59,7 @@ export async function GET(req: Request) {
     .from("drafts")
     .upsert(
       {
-        draft_date: today,
+        draft_date: targetDate,
         post,
         source_json: signals,
         status: "pending",
@@ -71,14 +75,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: draftErr.message }, { status: 500 });
   }
 
-  const editUrl = `${baseUrl()}/edit?date=${today}&token=${encodeURIComponent(getEnv("EDIT_TOKEN"))}`;
+  const editUrl = `${baseUrl()}/edit?date=${targetDate}&token=${encodeURIComponent(getEnv("EDIT_TOKEN"))}`;
   await sendDraftEmail({
     to: getEnv("EMAIL_TO"),
     from: getEnv("EMAIL_FROM"),
-    subject: `[ThreadBot] ${today} 09:00 자동게시 전 초안`,
+    subject: `[ThreadBot] ${targetDate} 09:00 자동게시 예정 초안`,
     post,
     editUrl,
   });
 
-  return NextResponse.json({ ok: true, draft: draftRow, signals: signals.length, editUrl });
+  return NextResponse.json({ ok: true, draft: draftRow, signals: signals.length, targetDate, editUrl });
 }

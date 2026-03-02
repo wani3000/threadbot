@@ -5,25 +5,36 @@ import SourceManager from "@/components/SourceManager";
 
 export const dynamic = "force-dynamic";
 
+function kstDate(offsetDays = 0): string {
+  const now = new Date();
+  const kstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  kstNow.setDate(kstNow.getDate() + offsetDays);
+  return kstNow.toISOString().slice(0, 10);
+}
+
 async function getHomeData() {
   const db = supabaseAdmin();
+  const tomorrow = kstDate(1);
   const now = new Date();
   const weekAgo = new Date(now);
   weekAgo.setDate(now.getDate() - 7);
   const weekAgoIso = weekAgo.toISOString();
 
-  const [{ data: posts }, { data: drafts }, { data: signals }, { data: sources }] = await Promise.all([
+  const [{ data: posts }, { data: drafts }, { data: signals }, { data: sources }, { data: tomorrowDraft }] = await Promise.all([
     db.from("posts").select("posted_at,post").gte("posted_at", weekAgoIso).order("posted_at", { ascending: false }).limit(10),
     db.from("drafts").select("draft_date,post,status,approved,updated_at").order("draft_date", { ascending: false }).limit(5),
     db.from("signals").select("title,link,summary,published_at,airline,role,confidence").gte("created_at", weekAgoIso).order("published_at", { ascending: false }).limit(50),
     db.from("sources").select("name,url,enabled").order("created_at", { ascending: true }),
+    db.from("drafts").select("draft_date,post,status,approved,updated_at").eq("draft_date", tomorrow).maybeSingle(),
   ]);
 
   return {
+    tomorrow,
     posts: posts || [],
     drafts: drafts || [],
     signals: (signals || []) as Signal[],
     sources: sources || [],
+    tomorrowDraft: tomorrowDraft || null,
   };
 }
 
@@ -85,7 +96,38 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2>오늘 초안 수정</h2>
+        <h2>내일 업로드 예정 글 (09:00 KST)</h2>
+        {data.tomorrowDraft ? (
+          <article>
+            <p>
+              <strong>{data.tomorrowDraft.draft_date}</strong> / 상태: {data.tomorrowDraft.status}
+            </p>
+            <pre style={{ whiteSpace: "pre-wrap" }}>{data.tomorrowDraft.post}</pre>
+            <Link href={`/edit?date=${data.tomorrowDraft.draft_date}`}>내일 글 수정하기</Link>
+          </article>
+        ) : (
+          <p>내일({data.tomorrow}) 예정 초안이 아직 없습니다. 07:00 수집/작성 후 표시됩니다.</p>
+        )}
+      </section>
+
+      <section>
+        <h2>글 규칙 (자동생성)</h2>
+        <ul>
+          <li>하루 1개만 게시 (KST 기준)</li>
+          <li>5슬라이드 고정 (1/5~5/5)</li>
+          <li>한 문장 한 줄</li>
+          <li>짧은 구어체 존댓말</li>
+          <li>첫 슬라이드 훅: 질문형/반전형 + 숫자</li>
+          <li>전개: 공감 → 문제 → 내 경험 → 해결 → 행동 유도</li>
+          <li>슬라이드당 핵심 1개</li>
+          <li>이모지 1~2개 이내</li>
+          <li>마지막 슬라이드: 요약 1줄 + 부드러운 CTA</li>
+          <li>링크는 마지막 슬라이드에 1~2개</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>최근 초안 수정</h2>
         {data.drafts[0] ? <Link href={`/edit?date=${data.drafts[0].draft_date}`}>최근 초안 열기</Link> : <p>초안 없음</p>}
       </section>
     </main>
