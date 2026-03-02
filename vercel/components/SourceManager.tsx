@@ -4,6 +4,18 @@ import { useEffect, useState } from "react";
 
 type Source = { id?: string; name: string; url: string; enabled: boolean };
 
+function isOfficialRecruitSource(source: Source): boolean {
+  const v = `${source.name} ${source.url}`.toLowerCase();
+  return (
+    v.includes("recruiter.co.kr") ||
+    v.includes("koreanair.recruiter.co.kr") ||
+    v.includes("flyasiana.recruiter.co.kr") ||
+    v.includes("/career/") ||
+    v.includes("/recruit") ||
+    v.includes("/apply")
+  );
+}
+
 export default function SourceManager({ initial, editToken }: { initial: Source[]; editToken?: string }) {
   const [sources, setSources] = useState(initial);
   const [name, setName] = useState("");
@@ -54,10 +66,21 @@ export default function SourceManager({ initial, editToken }: { initial: Source[
   return (
     <div>
       <p>총 {sources.filter((s) => s.enabled).length}개</p>
+      <h3>1. 공식 항공사 채용 홈페이지</h3>
       <ul>
-        {sources.filter((s) => s.enabled).map((s) => (
-          <li key={s.id || `${s.name}-${s.url}`}>{s.name}: {s.url}</li>
-        ))}
+        {sources
+          .filter((s) => s.enabled && isOfficialRecruitSource(s))
+          .map((s) => (
+            <li key={s.id || `${s.name}-${s.url}`}>{s.name}: {s.url}</li>
+          ))}
+      </ul>
+      <h3>2. 승무원 관련 강사/인플루언서</h3>
+      <ul>
+        {sources
+          .filter((s) => s.enabled && !isOfficialRecruitSource(s))
+          .map((s) => (
+            <li key={s.id || `${s.name}-${s.url}`}>{s.name}: {s.url}</li>
+          ))}
       </ul>
       <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
         <input placeholder="소스 이름 (선택: 1개 입력 시만 적용)" value={name} onChange={(e) => setName(e.target.value)} />
