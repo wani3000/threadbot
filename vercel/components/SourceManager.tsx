@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Source = { id?: string; name: string; url: string; enabled: boolean };
 
@@ -9,6 +9,20 @@ export default function SourceManager({ initial, editToken }: { initial: Source[
   const [name, setName] = useState("");
   const [urlText, setUrlText] = useState("");
   const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/collection/sources", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (!alive) return;
+        if (Array.isArray(data)) setSources(data as Source[]);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   async function addSource() {
     setMsg("");
