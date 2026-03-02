@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminAuthHeader } from "@/lib/supabaseBrowser";
 
-export default function RegenerateDraftButton({ draftDate }: { draftDate: string }) {
+export default function RegenerateDraftButton({ draftDate, onDone }: { draftDate: string; onDone?: () => void | Promise<void> }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -42,9 +42,7 @@ export default function RegenerateDraftButton({ draftDate }: { draftDate: string
       `AI 재작성 완료 (${data.updated_at || "updated"}) · 모드:${data.write_mode || "-"} · 소스:${data.source_count || 0}건${preview ? ` · 예시:${preview}` : ""}`,
     );
     router.refresh();
-    setTimeout(() => {
-      if (typeof window !== "undefined") window.location.reload();
-    }, 400);
+    if (onDone) await onDone();
   }
 
   return (
