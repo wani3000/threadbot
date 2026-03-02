@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getEnv } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase";
 import { generatePost } from "@/lib/generate";
+import { getWriteMode } from "@/lib/writeMode";
 import type { Signal } from "@/lib/types";
 
 function validateToken(req: Request): boolean {
@@ -56,7 +57,28 @@ export async function POST(req: Request, { params }: { params: { draftDate: stri
     .single();
   if (readErr || !draft) return NextResponse.json({ error: "draft not found" }, { status: 404 });
 
-  const signals = ((draft.source_json as Signal[] | null) || []).slice(0, 80);
+  const writeMode = await getWriteMode(db);
+  let signals: Signal[] = [];
+
+  if (writeMode === "direct") {
+    const since = new Date();
+    since.setDate(since.getDate() - 7);
+    const { data: manualRows } = await db
+      .from("signals")
+      .select("source_name,source_url,title,link,published_at,airline,role,summary,confidence,created_at")
+      .eq("source_name", "manual-upload")
+      .gte("created_at", since.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(300);
+    signals = ((manualRows || []) as Signal[]).slice(0, 120);
+  } else {
+    signals = ((draft.source_json as Signal[] | null) || []).slice(0, 120);
+  }
+
+  if (signals.length === 0) {
+    signals = ((draft.source_json as Signal[] | null) || []).slice(0, 120);
+  }
+
   const styleSample = getEnv("STYLE_SAMPLE", "친근한 승무원 취업 코칭 톤");
   const regenerated = await generatePost(signals, styleSample);
 
@@ -64,6 +86,7 @@ export async function POST(req: Request, { params }: { params: { draftDate: stri
     .from("drafts")
     .update({
       post: regenerated,
+      source_json: signals,
       approved: false,
       status: "regenerated",
       updated_at: new Date().toISOString(),
