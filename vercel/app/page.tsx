@@ -7,6 +7,7 @@ import AdminSessionPanel from "@/components/AdminSessionPanel";
 import TomorrowDraftPanel from "@/components/TomorrowDraftPanel";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
+import { getThreadsTokenExpiresAt } from "@/lib/threadsToken";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,16 @@ async function getHomeData() {
     signals: (signals || []) as Signal[],
     sources: sources || [],
     tomorrowDraft: tomorrowDraft || null,
+    tokenExpiresAt: await getThreadsTokenExpiresAt(db),
   };
+}
+
+function tokenRemainDays(expiresAt: string | null): number | null {
+  if (!expiresAt) return null;
+  const t = new Date(expiresAt).getTime();
+  if (!Number.isFinite(t)) return null;
+  const diff = t - Date.now();
+  return Math.ceil(diff / (24 * 60 * 60 * 1000));
 }
 
 function recommended(signals: Signal[]) {
@@ -137,10 +147,23 @@ export default async function HomePage() {
   const tomorrowSignals = ((data.tomorrowDraft as { source_json?: Signal[] } | null)?.source_json || []) as Signal[];
   const collected = summarizeCollected(tomorrowSignals);
   const priorityCount = sourcePriorityCounts(tomorrowSignals);
+  const remainDays = tokenRemainDays(data.tokenExpiresAt);
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "24px", fontFamily: "system-ui, sans-serif" }}>
       <h1>ThreadBot Dashboard (Vercel)</h1>
+
+      <section>
+        <h2>Threads 토큰 상태</h2>
+        {data.tokenExpiresAt ? (
+          <p>
+            만료일: {new Date(data.tokenExpiresAt).toLocaleString("ko-KR")} / 남은 기간:{" "}
+            <strong>{remainDays ?? "-"}</strong>일
+          </p>
+        ) : (
+          <p>만료 정보 없음 (토큰 자동갱신 API가 1회 이상 성공하면 표시됩니다).</p>
+        )}
+      </section>
 
       <section>
         <h2>관리자 로그인</h2>
