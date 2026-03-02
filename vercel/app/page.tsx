@@ -25,7 +25,7 @@ async function getHomeData() {
     db.from("drafts").select("draft_date,post,status,approved,updated_at").order("draft_date", { ascending: false }).limit(5),
     db.from("signals").select("source_name,title,link,summary,published_at,airline,role,confidence").gte("created_at", weekAgoIso).order("published_at", { ascending: false }).limit(200),
     db.from("sources").select("name,url,enabled").order("created_at", { ascending: true }),
-    db.from("drafts").select("draft_date,post,status,approved,updated_at").eq("draft_date", tomorrow).maybeSingle(),
+    db.from("drafts").select("draft_date,post,status,approved,updated_at,source_json").eq("draft_date", tomorrow).maybeSingle(),
   ]);
 
   return {
@@ -63,6 +63,19 @@ function ongoing(signals: Signal[]) {
   return signals.filter((s) => /채용|모집|승무원|객실|recruit|hiring/i.test(`${s.title} ${s.summary}`)).slice(0, 20);
 }
 
+function summarizeCollected(signals: Signal[]) {
+  const airlineCount = new Map<string, number>();
+  for (const s of signals) {
+    const key = s.airline || "기타";
+    airlineCount.set(key, (airlineCount.get(key) || 0) + 1);
+  }
+  const airlines = [...airlineCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const topItems = signals.slice(0, 8);
+  return { total: signals.length, airlines, topItems };
+}
+
 function keywordStats(signals: Signal[]) {
   const map = new Map<string, { count: number; top: Signal[] }>();
   for (const s of signals) {
@@ -85,6 +98,8 @@ export default async function HomePage() {
   const seriesRecos = seriesRecommended(data.signals);
   const keywordRows = keywordStats(data.signals);
   const activeSources = data.sources.filter((s: { enabled: boolean }) => s.enabled);
+  const tomorrowSignals = ((data.tomorrowDraft as { source_json?: Signal[] } | null)?.source_json || []) as Signal[];
+  const collected = summarizeCollected(tomorrowSignals);
 
   return (
     <main style={{ maxWidth: 980, margin: "0 auto", padding: "24px", fontFamily: "system-ui, sans-serif" }}>
@@ -187,6 +202,32 @@ export default async function HomePage() {
           </article>
         ) : (
           <p>내일({data.tomorrow}) 예정 초안이 아직 없습니다. 오늘 23:59(KST) 수집/작성 후 표시됩니다.</p>
+        )}
+      </section>
+
+      <section>
+        <h2>내일 업로드예정글을 위한 수집 내용</h2>
+        {tomorrowSignals.length === 0 ? (
+          <p>수집 요약이 아직 없습니다.</p>
+        ) : (
+          <>
+            <p>총 수집 건수: {collected.total}건</p>
+            <p>
+              항공사 분포:{" "}
+              {collected.airlines.map(([name, count]) => `${name} ${count}건`).join(" / ")}
+            </p>
+            <ul>
+              {collected.topItems.map((s) => (
+                <li key={`${s.title}-${s.link}`}>
+                  <a href={s.link} target="_blank">
+                    {s.title}
+                  </a>
+                  {" - "}
+                  {s.summary}
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </section>
 
