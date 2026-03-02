@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/env";
-import { notFoundResponse, serverErrorResponse, unauthorizedResponse } from "@/lib/apiError";
+import { cronUnauthorizedResponse, notFoundResponse, serverErrorResponse } from "@/lib/apiError";
 import { supabaseAdmin } from "@/lib/supabase";
 import { publishThreads } from "@/lib/threads";
 import { getThreadsPublishToken, isThreadsTokenError, refreshThreadsLongLivedToken, setThreadsPublishToken } from "@/lib/threadsToken";
@@ -18,7 +18,7 @@ function kstDayBoundsUtc(dateKst: string): { startUtc: string; endUtc: string } 
 
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) {
-    return unauthorizedResponse();
+    return cronUnauthorizedResponse();
   }
 
   const db = supabaseAdmin();

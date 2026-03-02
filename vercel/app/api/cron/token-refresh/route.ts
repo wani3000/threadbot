@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/env";
-import { serverErrorResponse, unauthorizedResponse } from "@/lib/apiError";
+import { cronUnauthorizedResponse, serverErrorResponse } from "@/lib/apiError";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getThreadsPublishToken, getThreadsTokenExpiresAt, refreshThreadsLongLivedToken, setThreadsPublishToken } from "@/lib/threadsToken";
 
 export async function GET(req: Request) {
-  if (!isAuthorizedCron(req)) return unauthorizedResponse();
+  if (!isAuthorizedCron(req)) return cronUnauthorizedResponse();
 
   try {
     const db = supabaseAdmin();

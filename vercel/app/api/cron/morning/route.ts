@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { baseUrl, getEnv, isAuthorizedCron } from "@/lib/env";
-import { serverErrorResponse, unauthorizedResponse } from "@/lib/apiError";
+import { cronUnauthorizedResponse, serverErrorResponse } from "@/lib/apiError";
 import { supabaseAdmin } from "@/lib/supabase";
 import { collectFromSource, collectFromThreadsKeywords, dedupeSignals, prioritizeSignals } from "@/lib/collect";
 import { generatePost } from "@/lib/generate";
@@ -32,7 +32,7 @@ function influencerSourcePriority(source: Source): number {
 
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) {
-    return unauthorizedResponse();
+    return cronUnauthorizedResponse();
   }
   const quick = new URL(req.url).searchParams.get("quick") === "1";
 
