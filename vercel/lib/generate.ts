@@ -48,6 +48,7 @@ function sanitizeGeneratedPost(raw: string): string {
     .split("\n")
     .filter((line) => {
       const low = line.toLowerCase();
+      if (/^\s*\d+\s*\/\s*\d+\s*$/.test(line.trim())) return false;
       if (/https?:\/\//i.test(line)) return false;
       if (/\[[^\]]+\]\((https?:\/\/|manual:\/\/)[^)]+\)/i.test(line)) return false;
       if (/댓글|dm|문의|신청|상담/i.test(line) && /(남겨|주세요|해요|바랍니다)/.test(line)) return false;
@@ -60,13 +61,9 @@ function sanitizeGeneratedPost(raw: string): string {
 
 function ensureHeartEnding(text: string): string {
   const lines = text.split("\n");
-  const lastNumberIdx = [...lines].reverse().findIndex((v) => /^\s*2\s*\/\s*2\s*$/.test(v.trim()));
-  if (lastNumberIdx === -1) return text;
-  const idx = lines.length - 1 - lastNumberIdx;
-  for (let i = idx - 1; i >= 0; i -= 1) {
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
     const t = lines[i].trim();
     if (!t) continue;
-    if (/^\d+\s*\/\s*\d+$/.test(t)) continue;
     if (!t.includes("❤️")) lines[i] = `${t.replace(/[.!?]+$/g, "").trim()} ❤️`;
     break;
   }
@@ -89,28 +86,23 @@ export async function generatePostDetailed(
       "저도 그랬어요.",
       "다음 공고 전 준비가",
       "진짜 승부예요.",
-      "1/5",
       "",
       "첫 번째 준비는",
       "자소서 문항 정리예요.",
       "갑자기 열리면",
       "시간이 없거든요.",
-      "2/5",
       "",
       "두 번째 준비는",
       "면접 답변 틀 잡기.",
       "짧고 또렷하게요.",
-      "3/5",
       "",
       "세 번째 준비는",
       "체력 루틴 고정.",
       "면접 전에 티나요.",
-      "4/5",
       "",
       "오늘 요약 끝.",
       "저장해두고",
-      "다음 공고 같이 봐요.",
-      "5/5",
+      "다음 공고 같이 봐요 ❤️",
       ].join("\n"),
     };
   }
@@ -141,7 +133,8 @@ export async function generatePostDetailed(
             "아래 가이드를 반드시 준수한다.",
             FULL_CONTENT_GUIDE,
             "출력은 반드시 본문 1개 + 이어지는 글 1개, 총 2개로 작성한다.",
-            "각 게시글은 5~8줄을 쓰고 마지막 줄을 1/2, 2/2 넘버링으로 끝낸다.",
+            "각 게시글은 5~8줄로 작성한다.",
+            "1/5, 2/5, 1/2 같은 넘버링 문장은 절대 쓰지 않는다.",
             "슬라이드 사이에는 빈 줄 하나만 둔다.",
             "'슬라이드 1:' 같은 라벨 금지.",
             "굵게(**)나 번호목록 마크다운 금지.",
@@ -189,7 +182,7 @@ export async function generatePostDetailed(
           {
             role: "system",
             content:
-              "이전 결과가 너무 짧았습니다. 반드시 2개 게시글(본문+이어지는 글1개), 각 5~8줄(마지막 줄은 1/2,2/2), 총 정보량을 충분히 늘려 다시 작성하세요. 링크/댓글유도/자기홍보 문장은 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
+              "이전 결과가 너무 짧았습니다. 반드시 2개 게시글(본문+이어지는 글1개), 각 5~8줄로 총 정보량을 충분히 늘려 다시 작성하세요. 1/5, 2/5 같은 넘버링은 금지, 링크/댓글유도/자기홍보 문장은 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
           },
           {
             role: "user",

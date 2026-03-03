@@ -1,34 +1,11 @@
 const GRAPH_BASE = (process.env.THREADS_GRAPH_BASE || "https://graph.threads.net").replace(/\/$/, "");
 
 function splitSlides(postText: string): string[] {
-  const lines = postText.split("\n");
-  const numberedSlides: string[] = [];
-  let buf: string[] = [];
-  const numbering = /^\s*([1-2])\s*\/\s*2\s*$/;
-
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-    if (!line && buf.length === 0) continue;
-    buf.push(line);
-    if (numbering.test(line.trim())) {
-      const text = buf.join("\n").trim();
-      if (text) numberedSlides.push(text);
-      buf = [];
-    }
-  }
-
-  if (buf.length > 0) {
-    const tail = buf.join("\n").trim();
-    if (tail) numberedSlides.push(tail);
-  }
-
-  if (numberedSlides.length >= 2) return numberedSlides.slice(0, 2);
-  if (numberedSlides.length >= 1) return numberedSlides;
-
   return postText
     .split(/\n\s*\n+/)
     .map((s) => s.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .slice(0, 2);
 }
 
 async function createTextContainer(token: string, text: string, replyToId?: string) {
