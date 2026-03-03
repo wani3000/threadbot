@@ -21,6 +21,7 @@ export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) {
     return cronUnauthorizedResponse();
   }
+  const force = new URL(req.url).searchParams.get("force") === "1";
 
   const db = supabaseAdmin();
   const today = kstDate();
@@ -71,13 +72,13 @@ export async function GET(req: Request) {
     const ok = (p as { publish_result?: { ok?: boolean } | null }).publish_result?.ok;
     return ok === true;
   });
-  if (hasSuccessfulPostToday || draft.status === "posted") {
+  if (!force && (hasSuccessfulPostToday || draft.status === "posted")) {
     await safeRecordCronRun(db, {
       cronName: "post",
       ok: true,
       statusCode: 200,
       summary: "오늘 이미 게시됨(스킵)",
-      details: { draft_date: today },
+      details: { draft_date: today, force },
     });
     return NextResponse.json({
       ok: true,
@@ -113,6 +114,7 @@ export async function GET(req: Request) {
     details: {
       draft_id: draft.id,
       draft_date: draft.draft_date,
+      force,
       result: publish.body,
     },
   });
