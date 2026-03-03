@@ -9,7 +9,7 @@ import { syncDefaultSources } from "@/lib/sourceSync";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { getWriteMode } from "@/lib/writeMode";
 import { safeRecordCronRun } from "@/lib/cronRun";
-import { getWeekdayThemePrompt } from "@/lib/weekdayTheme";
+import { getWeekdayThemePrompt, isPostMatchingWeekdayTheme } from "@/lib/weekdayTheme";
 import type { Signal, Source } from "@/lib/types";
 
 function kstDate(offsetDays = 0): string {
@@ -130,7 +130,15 @@ export async function GET(req: Request) {
     .filter(Boolean)
     .join("\n");
 
-  const post = await generatePost(signals, styleSample, extraPrompt);
+  let post = await generatePost(signals, styleSample, extraPrompt);
+  for (let i = 0; i < 2; i += 1) {
+    if (isPostMatchingWeekdayTheme(targetDate, post)) break;
+    post = await generatePost(
+      signals,
+      styleSample,
+      `${extraPrompt}\n현재 결과가 요일 카테고리와 맞지 않았습니다. 반드시 해당 요일 카테고리 키워드를 반영해 다시 작성하세요.`,
+    );
+  }
 
   const { data: draftRow, error: draftErr } = await db
     .from("drafts")

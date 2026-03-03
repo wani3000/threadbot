@@ -6,7 +6,7 @@ import { generatePostDetailed } from "@/lib/generate";
 import { getWriteMode } from "@/lib/writeMode";
 import type { Signal } from "@/lib/types";
 import { safeRecordCronRun } from "@/lib/cronRun";
-import { getWeekdayThemePrompt } from "@/lib/weekdayTheme";
+import { getWeekdayThemePrompt, isPostMatchingWeekdayTheme } from "@/lib/weekdayTheme";
 
 function kstDate(): string {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
@@ -53,12 +53,22 @@ export async function GET(req: Request) {
     if (signals.length === 0) return notFoundResponse("재작성에 사용할 수집 데이터가 없습니다.");
 
     const style = process.env.STYLE_SAMPLE || "친근한 승무원 취업 코칭 톤";
-    const regen = await generatePostDetailed(
+    let regen = await generatePostDetailed(
       signals,
       style,
       `${getWeekdayThemePrompt(draft.draft_date)}\n링크 금지/댓글유도 금지/자기홍보 금지/마지막 ❤️ 규칙을 강하게 적용해 재작성. 시드:${Date.now()}`,
       { temperature: 0.95 },
     );
+    for (let i = 0; i < 2; i += 1) {
+      if (regen.provider !== "openai") break;
+      if (isPostMatchingWeekdayTheme(draft.draft_date, regen.post)) break;
+      regen = await generatePostDetailed(
+        signals,
+        style,
+        `${getWeekdayThemePrompt(draft.draft_date)}\n카테고리 불일치로 재작성합니다. 해당 요일 키워드를 명확히 반영하세요. 시드:${Date.now()}-${i}`,
+        { temperature: 1.0 },
+      );
+    }
 
     if (regen.provider !== "openai") {
       await safeRecordCronRun(db, {

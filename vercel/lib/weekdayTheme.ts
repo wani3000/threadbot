@@ -50,6 +50,16 @@ const THEMES: Record<number, WeekdayTheme> = {
   },
 };
 
+const THEME_KEYWORDS: Record<number, string[]> = {
+  0: ["대면", "현장", "입실", "퇴실", "면접장", "장면", "답변"],
+  1: ["예상질문", "질문", "답변", "체력", "스트레스", "이미지"],
+  2: ["비전공", "전공", "서비스", "태도", "대한항공", "직무"],
+  3: ["꿀팁", "루틴", "준비", "체력", "질문의도", "습관"],
+  4: ["면접관", "표정", "시선", "긴장", "질문", "대응"],
+  5: ["팀워크", "글로벌", "사회성", "침착", "역량", "기내"],
+  6: ["영상면접", "카메라", "화면", "비율", "프레임", "의상"],
+};
+
 function weekdayKstFromDate(dateKst: string): number {
   const label = new Date(`${dateKst}T12:00:00+09:00`).toLocaleDateString("en-US", {
     weekday: "short",
@@ -61,6 +71,13 @@ function weekdayKstFromDate(dateKst: string): number {
 
 export function getWeekdayTheme(dateKst: string): WeekdayTheme {
   return THEMES[weekdayKstFromDate(dateKst)];
+}
+
+export function isPostMatchingWeekdayTheme(dateKst: string, post: string): boolean {
+  const weekday = weekdayKstFromDate(dateKst);
+  const keywords = THEME_KEYWORDS[weekday] || [];
+  const text = post.toLowerCase();
+  return keywords.some((k) => text.includes(k.toLowerCase()));
 }
 
 export function getWeekdayThemeTable(): Array<{ weekday: string; category: string; example: string }> {
