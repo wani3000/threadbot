@@ -59,8 +59,24 @@ function weekdayKstFromDate(dateKst: string): number {
   return map[label] ?? 0;
 }
 
+export function getWeekdayTheme(dateKst: string): WeekdayTheme {
+  return THEMES[weekdayKstFromDate(dateKst)];
+}
+
+export function getWeekdayThemeTable(): Array<{ weekday: string; category: string }> {
+  return [
+    { weekday: "월요일", category: THEMES[1].category },
+    { weekday: "화요일", category: THEMES[2].category },
+    { weekday: "수요일", category: THEMES[3].category },
+    { weekday: "목요일", category: THEMES[4].category },
+    { weekday: "금요일", category: THEMES[5].category },
+    { weekday: "토요일", category: THEMES[6].category },
+    { weekday: "일요일", category: THEMES[0].category },
+  ];
+}
+
 export function getWeekdayThemePrompt(dateKst: string): string {
-  const theme = THEMES[weekdayKstFromDate(dateKst)];
+  const theme = getWeekdayTheme(dateKst);
   return [
     `요일 고정 규칙: ${theme.weekday} 카테고리는 반드시 "${theme.category}"로 작성한다.`,
     `작성 가이드: ${theme.guidance}`,
@@ -68,4 +84,3 @@ export function getWeekdayThemePrompt(dateKst: string): string {
     "다른 요일 카테고리로 벗어나지 않는다.",
   ].join("\n");
 }
-

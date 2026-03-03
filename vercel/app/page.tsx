@@ -8,6 +8,7 @@ import TomorrowDraftPanel from "@/components/TomorrowDraftPanel";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
 import { checkThreadsTokenHealth, getThreadsTokenExpiresAt } from "@/lib/threadsToken";
+import { getWeekdayTheme, getWeekdayThemeTable } from "@/lib/weekdayTheme";
 
 export const dynamic = "force-dynamic";
 
@@ -170,6 +171,8 @@ export default async function HomePage() {
   const collected = summarizeCollected(tomorrowSignals);
   const priorityCount = sourcePriorityCounts(tomorrowSignals);
   const remainDays = tokenRemainDays(data.tokenExpiresAt);
+  const tomorrowTheme = getWeekdayTheme(data.tomorrow);
+  const weekdayThemeTable = getWeekdayThemeTable();
   const lastMorning = latestCronByName(
     data.cronRuns as Array<{ cron_name: string; run_at: string; ok: boolean; status_code: number | null; summary: string; details?: Record<string, unknown> | null }>,
     "morning",
@@ -255,6 +258,29 @@ export default async function HomePage() {
         <p style={{ marginTop: 8 }}>
           <Link href="/upload">정보올리기 페이지로 이동</Link>
         </p>
+      </section>
+
+      <section>
+        <h2>요일별 고정 카테고리</h2>
+        <p>
+          내일({data.tomorrow}) 예정 카테고리: <strong>{tomorrowTheme.weekday} / {tomorrowTheme.category}</strong>
+        </p>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>요일</th>
+              <th style={{ textAlign: "left", borderBottom: "1px solid #ddd", padding: "8px" }}>고정 카테고리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {weekdayThemeTable.map((row) => (
+              <tr key={row.weekday}>
+                <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{row.weekday}</td>
+                <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{row.category}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
 
       <section>
