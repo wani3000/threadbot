@@ -6,6 +6,7 @@ import { generatePostDetailed } from "@/lib/generate";
 import { getWriteMode } from "@/lib/writeMode";
 import type { Signal } from "@/lib/types";
 import { safeRecordCronRun } from "@/lib/cronRun";
+import { getWeekdayThemePrompt } from "@/lib/weekdayTheme";
 
 function kstDate(): string {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
@@ -55,7 +56,7 @@ export async function GET(req: Request) {
     const regen = await generatePostDetailed(
       signals,
       style,
-      `링크 금지/댓글유도 금지/자기홍보 금지/마지막 ❤️ 규칙을 강하게 적용해 재작성. 시드:${Date.now()}`,
+      `${getWeekdayThemePrompt(draft.draft_date)}\n링크 금지/댓글유도 금지/자기홍보 금지/마지막 ❤️ 규칙을 강하게 적용해 재작성. 시드:${Date.now()}`,
       { temperature: 0.95 },
     );
 
@@ -96,4 +97,3 @@ export async function GET(req: Request) {
     return serverErrorResponse("api/cron/regenerate-today GET", error);
   }
 }
-

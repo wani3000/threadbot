@@ -9,6 +9,7 @@ import { syncDefaultSources } from "@/lib/sourceSync";
 import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { getWriteMode } from "@/lib/writeMode";
 import { safeRecordCronRun } from "@/lib/cronRun";
+import { getWeekdayThemePrompt } from "@/lib/weekdayTheme";
 import type { Signal, Source } from "@/lib/types";
 
 function kstDate(offsetDays = 0): string {
@@ -120,6 +121,7 @@ export async function GET(req: Request) {
   const latestPostText = String(latestPostRow?.post || "").trim();
   const latestPostPreview = latestPostText ? latestPostText.split("\n").slice(0, 6).join(" / ") : "";
   const extraPrompt = [
+    getWeekdayThemePrompt(targetDate),
     "내일 업로드 예정 글은 오늘 이미 게시된 글과 카테고리가 완전히 달라야 합니다.",
     "오늘 글의 훅/전개/예시/핵심 메시지를 반복하지 마세요.",
     "가능하면 오늘과 다른 카테고리(채용정보형/면접대비형/현실공개형/합격자패턴형/간접세일즈형)로 작성하세요.",
