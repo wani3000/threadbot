@@ -279,7 +279,13 @@ export default async function HomePage() {
               <tr key={row.weekday}>
                 <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{row.weekday}</td>
                 <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{row.category}</td>
-                <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>{row.example}</td>
+                <td style={{ borderBottom: "1px solid #eee", padding: "8px" }}>
+                  <div>{row.example}</div>
+                  <details style={{ marginTop: 6 }}>
+                    <summary>예시 전체보기</summary>
+                    <pre style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{row.fullExample}</pre>
+                  </details>
+                </td>
               </tr>
             ))}
           </tbody>
