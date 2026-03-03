@@ -110,7 +110,25 @@ export async function GET(req: Request) {
   }
 
   const styleSample = getEnv("STYLE_SAMPLE", "친근한 승무원 취업 코칭 톤");
-  const post = await generatePost(signals, styleSample);
+  const { data: latestPostRow } = await db
+    .from("posts")
+    .select("post,posted_at")
+    .order("posted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const latestPostText = String(latestPostRow?.post || "").trim();
+  const latestPostPreview = latestPostText ? latestPostText.split("\n").slice(0, 6).join(" / ") : "";
+  const extraPrompt = [
+    "내일 업로드 예정 글은 오늘 이미 게시된 글과 카테고리가 완전히 달라야 합니다.",
+    "오늘 글의 훅/전개/예시/핵심 메시지를 반복하지 마세요.",
+    "가능하면 오늘과 다른 카테고리(채용정보형/면접대비형/현실공개형/합격자패턴형/간접세일즈형)로 작성하세요.",
+    latestPostPreview ? `오늘 게시글 일부: ${latestPostPreview}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const post = await generatePost(signals, styleSample, extraPrompt);
 
   const { data: draftRow, error: draftErr } = await db
     .from("drafts")

@@ -209,8 +209,8 @@ export async function generatePostDetailed(
   }
 }
 
-export async function generatePost(signals: Signal[], styleSample: string): Promise<string> {
-  const result = await generatePostDetailed(signals, styleSample);
+export async function generatePost(signals: Signal[], styleSample: string, extraPrompt = ""): Promise<string> {
+  const result = await generatePostDetailed(signals, styleSample, extraPrompt);
   return result.post;
 }
 
@@ -221,14 +221,12 @@ function fallbackPost(signals: Signal[]): string {
     "합격 속도가 나요.",
     "저도 이 시기에",
     "루틴부터 만들었어요.",
-    "1/2",
     "",
     "첫 번째는 정보선별.",
     "공식 채용 링크와",
     "강사/인플루언서 글을",
     "따로 정리해보세요.",
     "섞어보면 흐름이 보여요.",
-    "2/2",
     "",
     "오늘 요약할게요.",
     "정보선별 + 자소서틀 +",
