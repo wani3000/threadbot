@@ -53,10 +53,10 @@ export async function GET(req: Request) {
   // Hard guard: never publish more than once per KST day.
   const { data: todayPosts, error: postCheckErr } = await db
     .from("posts")
-    .select("id,posted_at")
+    .select("id,posted_at,publish_result")
     .gte("posted_at", startUtc)
     .lt("posted_at", endUtc)
-    .limit(1);
+    .limit(20);
   if (postCheckErr) {
     await safeRecordCronRun(db, {
       cronName: "post",
@@ -67,7 +67,11 @@ export async function GET(req: Request) {
     });
     return serverErrorResponse("api/cron/post post-check", postCheckErr);
   }
-  if ((todayPosts || []).length > 0 || draft.status === "posted") {
+  const hasSuccessfulPostToday = (todayPosts || []).some((p) => {
+    const ok = (p as { publish_result?: { ok?: boolean } | null }).publish_result?.ok;
+    return ok === true;
+  });
+  if (hasSuccessfulPostToday || draft.status === "posted") {
     await safeRecordCronRun(db, {
       cronName: "post",
       ok: true,
