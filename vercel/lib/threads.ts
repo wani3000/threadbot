@@ -63,6 +63,15 @@ async function publishContainer(token: string, creationId: string) {
   return { ok: publishRes.ok, status: publishRes.status, json: publishJson };
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isMediaNotFound(json: unknown): boolean {
+  const err = (json as { error?: { code?: number; error_subcode?: number } })?.error;
+  return err?.code === 24 || err?.error_subcode === 4279009;
+}
+
 export async function publishThreads(
   postText: string,
   tokenArg?: string,
@@ -73,10 +82,23 @@ export async function publishThreads(
   if (slides.length > 1) {
     let replyToId: string | undefined;
     const publishedIds: string[] = [];
+    const detachedIndices: number[] = [];
     for (let i = 0; i < slides.length; i += 1) {
       const text = slides[i];
-      const create = await createTextContainer(token, text, replyToId);
-      const creationId = (create.json as { id?: string })?.id;
+      let create = await createTextContainer(token, text, replyToId);
+      let creationId = (create.json as { id?: string })?.id;
+
+      if ((!create.ok || !creationId) && replyToId && isMediaNotFound(create.json)) {
+        await sleep(1500);
+        create = await createTextContainer(token, text, replyToId);
+        creationId = (create.json as { id?: string })?.id;
+      }
+      if ((!create.ok || !creationId) && replyToId) {
+        // Fallback: publish this slide as a standalone post instead of aborting all slides.
+        create = await createTextContainer(token, text);
+        creationId = (create.json as { id?: string })?.id;
+        if (create.ok && creationId) detachedIndices.push(i);
+      }
       if (!create.ok || !creationId) {
         return {
           ok: false,
@@ -85,8 +107,13 @@ export async function publishThreads(
         };
       }
 
-      const publish = await publishContainer(token, creationId);
-      const publishedId = (publish.json as { id?: string })?.id;
+      let publish = await publishContainer(token, creationId);
+      let publishedId = (publish.json as { id?: string })?.id;
+      if ((!publish.ok || !publishedId) && isMediaNotFound(publish.json)) {
+        await sleep(1200);
+        publish = await publishContainer(token, creationId);
+        publishedId = (publish.json as { id?: string })?.id;
+      }
       if (!publish.ok || !publishedId) {
         return {
           ok: false,
@@ -96,11 +123,12 @@ export async function publishThreads(
       }
       publishedIds.push(publishedId);
       replyToId = publishedId;
+      await sleep(900);
     }
     return {
       ok: true,
       status: 200,
-      body: { step: "publish_series", count: slides.length, ids: publishedIds },
+      body: { step: "publish_series", count: slides.length, ids: publishedIds, detached_indices: detachedIndices },
     };
   }
 
