@@ -43,10 +43,11 @@ function sanitizeGeneratedPost(raw: string): string {
     "소중한 기회를 놓치지 않도록 도와드릴게요",
     "댓글 남겨주세요",
     "댓글로 알려주세요",
+    "다음 슬라이드",
   ];
   const normalizedRaw = raw
-    // Remove inline slide numbering tokens like "... 1/5" or "(2/5)".
-    .replace(/\s*\(?\b\d+\s*\/\s*\d+\b\)?\s*$/gm, "")
+    // Remove numbering tokens like "1/5", "(2/5)" anywhere in text.
+    .replace(/\(?\b\d+\s*\/\s*\d+\b\)?/g, "")
     .replace(/\n{3,}/g, "\n\n");
 
   const lines = normalizedRaw
@@ -58,6 +59,7 @@ function sanitizeGeneratedPost(raw: string): string {
       if (/\[[^\]]+\]\((https?:\/\/|manual:\/\/)[^)]+\)/i.test(line)) return false;
       if (/댓글|dm|문의|신청|상담/i.test(line) && /(남겨|주세요|해요|바랍니다)/.test(line)) return false;
       if (/제공해드려요|도와드릴게요|과외도 진행 중/i.test(line)) return false;
+      if (/다음\s*슬라이드/i.test(line)) return false;
       return !banned.some((b) => low.includes(b.toLowerCase()));
     });
   const cleaned = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -137,10 +139,11 @@ export async function generatePostDetailed(
           content: [
             "아래 가이드를 반드시 준수한다.",
             FULL_CONTENT_GUIDE,
-            "출력은 반드시 본문 1개 + 이어지는 글 1개, 총 2개로 작성한다.",
-            "각 게시글은 5~8줄로 작성한다.",
+            "출력은 4~6문단으로 작성한다.",
+            "각 문단은 4~7줄로 작성한다.",
             "1/5, 2/5, 1/2 같은 넘버링 문장은 절대 쓰지 않는다.",
-            "슬라이드 사이에는 빈 줄 하나만 둔다.",
+            "문단 사이에는 빈 줄 하나만 둔다.",
+            "\"다음 슬라이드\"라는 표현은 절대 쓰지 않는다.",
             "'슬라이드 1:' 같은 라벨 금지.",
             "굵게(**)나 번호목록 마크다운 금지.",
             "해시태그는 사용하지 않는다.",
@@ -164,7 +167,7 @@ export async function generatePostDetailed(
             `[스타일 샘플]\n${styleSample}`,
             `[팩트]\n${facts}`,
             "오늘 주제: 최근 일주일 항공사 채용 업데이트",
-            "게시글 수: 2 (본문 + 이어지는 글 1개)",
+            "문단 수: 4~6",
             "요청: 가이드 전부 반영해서 스레드 초안 1개 작성",
             extraPrompt ? `추가 요청: ${extraPrompt}` : "",
           ]
@@ -187,7 +190,7 @@ export async function generatePostDetailed(
           {
             role: "system",
             content:
-              "이전 결과가 너무 짧았습니다. 반드시 2개 게시글(본문+이어지는 글1개), 각 5~8줄로 총 정보량을 충분히 늘려 다시 작성하세요. 1/5, 2/5 같은 넘버링은 금지, 링크/댓글유도/자기홍보 문장은 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
+              "이전 결과가 너무 짧았습니다. 반드시 4~6문단, 각 문단 4~7줄로 총 정보량을 충분히 늘려 다시 작성하세요. 1/5, 2/5 같은 넘버링은 금지, \"다음 슬라이드\" 문구 금지, 링크/댓글유도/자기홍보 문장은 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
           },
           {
             role: "user",
@@ -195,7 +198,7 @@ export async function generatePostDetailed(
               `[스타일 샘플]\n${styleSample}`,
               `[팩트]\n${facts}`,
               "오늘 주제: 최근 일주일 항공사 채용 업데이트",
-              "게시글 수: 2 (본문 + 이어지는 글 1개)",
+              "문단 수: 4~6",
               "요청: 내용 밀도를 높여 풍부하게 작성",
               extraPrompt ? `추가 요청: ${extraPrompt}` : "",
             ]

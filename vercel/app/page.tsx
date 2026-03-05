@@ -88,11 +88,11 @@ function recommended(signals: Signal[]) {
 }
 
 function seriesRecommended(signals: Signal[]) {
-  const top = signals.slice(0, 2);
+  const top = signals.slice(0, 4);
   if (top.length === 0) return [];
   return [
     {
-      title: "연속 글 2편 구조 (본문 + 후속 1개)",
+      title: "연속 글 구조 추천 (문단형)",
       posts: top.map((s, idx) => ({
         label: `${idx + 1}편`,
         post: `주제: ${s.title}\n핵심: ${s.summary}`,
@@ -308,7 +308,7 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2>2-2. 연속 글 구조 추천 (2편)</h2>
+        <h2>2-2. 연속 글 구조 추천</h2>
         {seriesRecos.map((r) => (
           <details key={r.title} style={{ marginBottom: 12 }}>
             <summary>{r.title}</summary>

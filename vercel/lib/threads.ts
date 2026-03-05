@@ -1,18 +1,20 @@
 const GRAPH_BASE = (process.env.THREADS_GRAPH_BASE || "https://graph.threads.net").replace(/\/$/, "");
+const MAX_CHAIN = Number(process.env.THREADS_MAX_CHAIN || "8");
 
 function stripSlideNumbering(text: string): string {
   return text
-    .replace(/\s*\(?\b\d+\s*\/\s*\d+\b\)?\s*$/gm, "")
+    .replace(/\(?\b\d+\s*\/\s*\d+\b\)?/g, "")
+    .replace(/다음\s*슬라이드/gi, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
 function splitSlides(postText: string): string[] {
   return stripSlideNumbering(postText)
-    .split(/\n\s*\n+/)
+    .split(/\n\s*---\s*\n|\n\s*\n+/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .slice(0, 2);
+    .slice(0, Number.isFinite(MAX_CHAIN) && MAX_CHAIN > 0 ? MAX_CHAIN : 8);
 }
 
 async function createTextContainer(token: string, text: string, replyToId?: string) {
