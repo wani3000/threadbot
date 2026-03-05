@@ -1,7 +1,14 @@
 const GRAPH_BASE = (process.env.THREADS_GRAPH_BASE || "https://graph.threads.net").replace(/\/$/, "");
 
+function stripSlideNumbering(text: string): string {
+  return text
+    .replace(/\s*\(?\b\d+\s*\/\s*\d+\b\)?\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function splitSlides(postText: string): string[] {
-  return postText
+  return stripSlideNumbering(postText)
     .split(/\n\s*\n+/)
     .map((s) => s.trim())
     .filter(Boolean)
@@ -55,7 +62,8 @@ export async function publishThreads(
   tokenArg?: string,
 ): Promise<{ ok: boolean; status: number; body: unknown }> {
   const token = tokenArg || process.env.THREADS_PUBLISH_TOKEN || "";
-  const slides = splitSlides(postText);
+  const safeText = stripSlideNumbering(postText);
+  const slides = splitSlides(safeText);
 
   if (slides.length > 1) {
     let replyToId: string | undefined;
@@ -121,7 +129,7 @@ export async function publishThreads(
   }
 
   // Single post fallback
-  const create = await createTextContainer(token, postText);
+  const create = await createTextContainer(token, safeText);
   const createJson = create.json;
   const creationId = (createJson as { id?: string })?.id;
 

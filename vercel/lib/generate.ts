@@ -44,7 +44,12 @@ function sanitizeGeneratedPost(raw: string): string {
     "댓글 남겨주세요",
     "댓글로 알려주세요",
   ];
-  const lines = raw
+  const normalizedRaw = raw
+    // Remove inline slide numbering tokens like "... 1/5" or "(2/5)".
+    .replace(/\s*\(?\b\d+\s*\/\s*\d+\b\)?\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n");
+
+  const lines = normalizedRaw
     .split("\n")
     .filter((line) => {
       const low = line.toLowerCase();
