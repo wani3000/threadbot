@@ -1,5 +1,6 @@
 const GRAPH_BASE = (process.env.THREADS_GRAPH_BASE || "https://graph.threads.net").replace(/\/$/, "");
 const MAX_CHAIN = Number(process.env.THREADS_MAX_CHAIN || "8");
+const MIN_SEGMENT_CHARS = Number(process.env.THREADS_MIN_SEGMENT_CHARS || "150");
 
 function stripSlideNumbering(text: string): string {
   return text
@@ -10,11 +11,31 @@ function stripSlideNumbering(text: string): string {
 }
 
 function splitSlides(postText: string): string[] {
-  return stripSlideNumbering(postText)
+  const rawSlides = stripSlideNumbering(postText)
     .split(/\n\s*---\s*\n|\n\s*\n+/)
     .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, Number.isFinite(MAX_CHAIN) && MAX_CHAIN > 0 ? MAX_CHAIN : 8);
+    .filter(Boolean);
+  const minChars = Number.isFinite(MIN_SEGMENT_CHARS) && MIN_SEGMENT_CHARS > 0 ? MIN_SEGMENT_CHARS : 150;
+  const merged: string[] = [];
+  let buffer = "";
+
+  for (const slide of rawSlides) {
+    buffer = buffer ? `${buffer}\n\n${slide}` : slide;
+    if (buffer.length >= minChars) {
+      merged.push(buffer.trim());
+      buffer = "";
+    }
+  }
+
+  if (buffer) {
+    if (merged.length > 0) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]}\n\n${buffer}`.trim();
+    } else {
+      merged.push(buffer.trim());
+    }
+  }
+
+  return merged.slice(0, Number.isFinite(MAX_CHAIN) && MAX_CHAIN > 0 ? MAX_CHAIN : 8);
 }
 
 async function createTextContainer(token: string, text: string, replyToId?: string) {

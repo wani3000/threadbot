@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import type { Signal } from "./types";
 import { FULL_CONTENT_GUIDE } from "./contentGuide";
 
+const MIN_THREAD_SEGMENT_CHARS = Number(process.env.THREADS_MIN_SEGMENT_CHARS || "150");
+
 export type GeneratePostResult = {
   post: string;
   provider: "openai" | "fallback";
@@ -22,6 +24,8 @@ function isNumbering(line: string): boolean {
 function isTooShortPost(text: string): boolean {
   const slides = splitSlides(text);
   if (slides.length < 2) return true;
+  const minChars = Number.isFinite(MIN_THREAD_SEGMENT_CHARS) && MIN_THREAD_SEGMENT_CHARS > 0 ? MIN_THREAD_SEGMENT_CHARS : 150;
+  if (slides.some((slide) => slide.length < minChars)) return true;
   const allLines = text
     .split("\n")
     .map((v) => v.trim())
@@ -141,6 +145,7 @@ export async function generatePostDetailed(
             FULL_CONTENT_GUIDE,
             "출력은 4~6문단으로 작성한다.",
             "각 문단은 4~7줄로 작성한다.",
+            "첫 게시글과 각 연속 스레드 문단은 모두 최소 150자 이상으로 작성한다.",
             "1/5, 2/5, 1/2 같은 넘버링 문장은 절대 쓰지 않는다.",
             "문단 사이에는 빈 줄 하나만 둔다.",
             "\"다음 슬라이드\"라는 표현은 절대 쓰지 않는다.",
@@ -191,7 +196,7 @@ export async function generatePostDetailed(
           {
             role: "system",
             content:
-              "이전 결과가 너무 짧았습니다. 반드시 4~6문단, 각 문단 4~7줄로 총 정보량을 충분히 늘려 다시 작성하세요. 1/5, 2/5 같은 넘버링은 금지, \"다음 슬라이드\" 문구 금지, 링크/댓글유도/자기홍보 문장은 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
+              "이전 결과가 너무 짧았습니다. 반드시 4~6문단, 각 문단 4~7줄, 그리고 첫 게시글과 각 연속 스레드 문단은 모두 최소 150자 이상으로 총 정보량을 충분히 늘려 다시 작성하세요. 1/5, 2/5 같은 넘버링은 금지, \"다음 슬라이드\" 문구 금지, 링크/댓글유도/자기홍보 문장은 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
           },
           {
             role: "user",

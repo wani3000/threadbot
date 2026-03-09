@@ -22,6 +22,7 @@
 
 4. 토요일과 일요일은 게시일에서 제외해야 한다.
 5. 카테고리는 달력 요일이 아니라 평일 게시 순서 기준으로 월-화-수-목-금 반복이어야 한다.
+6. 첫 게시와 연속 스레드는 각각 최소 150자 이상이어야 한다.
 
 ## 접근 전략
 수정은 다음 순서로 진행한다.
@@ -111,6 +112,22 @@ cron: monday-friday only
 theme cycle: mon, tue, wed, thu, fri, mon, tue...
 ```
 
+### E. 스레드 최소 글자 수
+후보 파일:
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/generate.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/threads.ts`
+
+핵심 변경:
+
+```ts
+const MIN_THREAD_CHARS = 150;
+```
+
+```text
+if a generated paragraph is shorter than 150 chars:
+  retry generation or merge with adjacent paragraph
+```
+
 ## 코드 변경 후보 파일
 - `/Users/hanwha/Documents/New project/threadbot/README.md`
 - `/Users/hanwha/Documents/New project/threadbot/research.md`
@@ -123,6 +140,8 @@ theme cycle: mon, tue, wed, thu, fri, mon, tue...
 - `/Users/hanwha/Documents/New project/threadbot/vercel/app/page.tsx`
 - `/Users/hanwha/Documents/New project/threadbot/vercel/lib/weekdayTheme.ts`
 - `/Users/hanwha/Documents/New project/threadbot/vercel/vercel.json`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/generate.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/threads.ts`
 
 ## 구현 시 고려 사항
 - 기존 09:30 재시도 cron은 유지한다.
@@ -192,6 +211,14 @@ theme cycle: mon, tue, wed, thu, fri, mon, tue...
 - 검증:
   - `npm run build` 통과
 
+### Iteration 5
+- 상태: 스레드 최소 글자 수 규칙 반영 완료
+- 실제 반영:
+  - 생성 검증 단계에서 150자 미만 문단이 있으면 재시도하도록 변경
+  - 실제 게시 전 분할 단계에서 150자 미만 조각은 인접 조각과 병합하도록 변경
+- 검증:
+  - `npm run build` 통과
+
 ### 개발자 피드백 기록 공간
 - 비어 있음
 
@@ -205,6 +232,7 @@ theme cycle: mon, tue, wed, thu, fri, mon, tue...
 - [x] Agent: Codex - Supabase `cron_runs` 조회 스크립트 추가
 - [x] Agent: Codex - 필요한 운영 env 목록 문서화
 - [x] Agent: Codex - 토/일 게시 제외 및 평일 순환 카테고리 규칙 반영
+- [x] Agent: Codex - 첫 게시/연속 스레드 최소 150자 규칙 반영
 - [ ] Agent: TBD - 운영 환경 `cron_runs` 또는 Vercel 로그에서 09:30 스킵 응답(`already_posted_today`) 확인
 
 ## 업데이트 이력
