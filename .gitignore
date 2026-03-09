@@ -6,6 +6,7 @@ src/*.egg-info/
 
 # Local env
 .env
+vercel/.env*.local
 
 # Data outputs
 data/outputs/

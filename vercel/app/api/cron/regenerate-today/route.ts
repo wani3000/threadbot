@@ -7,10 +7,7 @@ import { getWriteMode } from "@/lib/writeMode";
 import type { Signal } from "@/lib/types";
 import { safeRecordCronRun } from "@/lib/cronRun";
 import { getWeekdayThemePrompt, isPostMatchingWeekdayTheme } from "@/lib/weekdayTheme";
-
-function kstDate(): string {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
-}
+import { kstDate } from "@/lib/kst";
 
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) return cronUnauthorizedResponse();

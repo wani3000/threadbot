@@ -5,10 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { publishThreads } from "@/lib/threads";
 import { getThreadsPublishToken, isThreadsTokenError, refreshThreadsLongLivedToken, setThreadsPublishToken } from "@/lib/threadsToken";
 import { safeRecordCronRun } from "@/lib/cronRun";
-
-function kstDate(): string {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
-}
+import { kstDate } from "@/lib/kst";
 
 function kstDayBoundsUtc(dateKst: string): { startUtc: string; endUtc: string } {
   // KST 00:00 is UTC-9h previous day, so we build explicit UTC bounds.

@@ -9,15 +9,9 @@ import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
 import { checkThreadsTokenHealth, getThreadsTokenExpiresAt } from "@/lib/threadsToken";
 import { getWeekdayTheme, getWeekdayThemeTable } from "@/lib/weekdayTheme";
+import { kstDate } from "@/lib/kst";
 
 export const dynamic = "force-dynamic";
-
-function kstDate(offsetDays = 0): string {
-  const now = new Date();
-  const kstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  kstNow.setDate(kstNow.getDate() + offsetDays);
-  return kstNow.toISOString().slice(0, 10);
-}
 
 function kstStartIso(dateKst: string): string {
   return new Date(`${dateKst}T00:00:00+09:00`).toISOString();

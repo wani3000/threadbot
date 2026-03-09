@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "vercel:whoami": "vercel whoami",
+    "vercel:link": "vercel link",
+    "vercel:logs": "vercel logs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
@@ -24,6 +27,7 @@
     "@types/xml2js": "^0.4.14",
     "eslint": "^8.57.0",
     "eslint-config-next": "^14.2.35",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vercel": "^50.28.0"
   }
 }

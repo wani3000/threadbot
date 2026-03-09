@@ -10,18 +10,8 @@ import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { getWriteMode } from "@/lib/writeMode";
 import { safeRecordCronRun } from "@/lib/cronRun";
 import { getWeekdayThemePrompt, isPostMatchingWeekdayTheme } from "@/lib/weekdayTheme";
+import { kstDate, kstWeekday } from "@/lib/kst";
 import type { Signal, Source } from "@/lib/types";
-
-function kstDate(offsetDays = 0): string {
-  const now = new Date();
-  const kstNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  kstNow.setDate(kstNow.getDate() + offsetDays);
-  return kstNow.toISOString().slice(0, 10);
-}
-
-function kstWeekday(): number {
-  return Number(new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).getDay());
-}
 
 function influencerSourcePriority(source: Source): number {
   const v = `${source.name} ${source.url}`.toLowerCase();

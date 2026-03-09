@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAdminRequest } from "@/lib/adminAuth";
 import { badRequestResponse, serverErrorResponse, unauthorizedResponse } from "@/lib/apiError";
 import { supabaseAdmin } from "@/lib/supabase";
-
-function kstDate(): string {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().slice(0, 10);
-}
+import { kstDate } from "@/lib/kst";
 
 function splitChunks(raw: string): string[] {
   return raw
