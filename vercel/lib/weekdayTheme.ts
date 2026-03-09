@@ -6,32 +6,8 @@ export type WeekdayTheme = {
   fullExample: string;
 };
 
-const THEMES: Record<number, WeekdayTheme> = {
-  0: {
-    weekday: "일요일",
-    category: "대면 면접 관련",
-    guidance: "대면 면접 답변 구성은 장면 중심으로 풀어내고, 상황-행동-결과가 보이게 작성한다.",
-    example: "답변은 문장 나열보다 장면 설명 중심으로 쓴다.",
-    fullExample: `대면 면접 준비해야지 🙆🏻‍♀️
-답변 구성 꿀팁 가보자~!
-1. 답변은 문장이 아니라 '장면'으로 쓴다
-스터디 하다 보면 유독 답변이
-쏙쏙 잘 들리는 친구들 있지?
-상황만 줄줄 읊는게 아니라
-마치 듣는 사람도 그 공간에
-같이 있었던 기분이 들도록
-썰 풀듯이 말하는게 바로 그 비결이야
-<예시>
-'위기 상황이 발생했을 때 침착하게 주변을 살피며 필요한 조치를 신속하게 취했습니다. 도움 요청과 상황 판단을 빠르게 수행했습니다.'
-'수업을 듣던 중 옆자리 동료가 쓰러지는 상황이
-있었습니다. 즉시 친구의 상태를 살피며 주변에 큰 소리로 도움을 요청했고, 의료장비가 필요하다는 생각이 들어 함께 부탁했습니다.'
-두 답변의 차이가 좀 보일까?
-곧 인스타그램에 영상도 올리니까
-예시를 한번 찬찬히 들어보고 비교해 봐
-그 포인트를 알면 나도 흡입력 있는
-답변 말할 수 있다💪🏻`,
-  },
-  1: {
+const THEMES: WeekdayTheme[] = [
+  {
     weekday: "월요일",
     category: "면접 예상질문 관련",
     guidance: "면접 예상질문과 답변 방향을 짝으로 제시하고, 체력관리/스트레스관리/이미지메이킹 같은 실전 항목을 담는다.",
@@ -50,7 +26,7 @@ Q. 승무원의 외적 이미지에 대해 어떻게 생각하나요?
 A.
 "단정하고 안정감을 주는 외모는 승객에게 신뢰를 줍니다. 하지만 진짜 이미지는 태도와 서비스에서 나온다고 생각합니다."`,
   },
-  2: {
+  {
     weekday: "화요일",
     category: "대한항공 지원 비전공자 조언",
     guidance: "비전공자 시선에서 서비스 태도, 직무 적합성, 솔직한 학습 태도를 강조한다.",
@@ -64,7 +40,7 @@ A.
 결국 중요한 건 전공 여부가 아니라 승무원답게 사고하고, 승무원답게 행동하는 사람인지입니다.
 면접 연습은 일상에서부터 그 태도로 사시는 게 가장 낫습니다!`,
   },
-  3: {
+  {
     weekday: "수요일",
     category: "승무원 준비 꿀팁",
     guidance: "실행 가능한 준비 루틴 중심으로 작성하고 체력/질문의도 파악/기초 루틴을 포함한다.",
@@ -78,7 +54,7 @@ A.
 "어떻게 스트레스를 해소하는지", "힘들 때 어떻게 버티는지", "승무원 일이 어떤 일인지 말해봐라"
 5️⃣ 모두 <우리 회사 스케쥴 힘들텐데 너 잘 버틸 수 있어?>라는 의도입니다. 실제로 자체 체력 테스트를 진행하는 회사가 늘고있습니다. 특히나 LCC의 경우 승무원 피로도가 높은 편이기 때문에 더더욱 그렇습니다.`,
   },
-  4: {
+  {
     weekday: "목요일",
     category: "면접 관련",
     guidance: "면접관이 보는 포인트와 입실 태도, 시선, 긴장 관리 등 현장성 있는 팁을 담는다.",
@@ -96,7 +72,7 @@ A.
 📌 모르는 질문: 돌려 말하기보다 '정직한 태도 + 긍정적 마무리'
 승무원은 답을 아는 사람보다, 어떤 상황에서도 웃으며 해결하는 사람을 뽑습니다."`,
   },
-  5: {
+  {
     weekday: "금요일",
     category: "전직 승무원이 본 객실승무원 필요 역량",
     guidance: "팀워크, 글로벌 역량, 사회성, 침착함 등 핵심 역량을 실무 맥락으로 설명한다.",
@@ -113,69 +89,41 @@ A.
 ▪️침착함
 - 기내 응급 상황, 비상 상황 시 승무원이 당황해하면손님들은 그 승무원을 신뢰할 수 있을까? 어떤 상황이든 침착하게 대안을 생각하고 상황을 리드할줄 알아야해.`,
   },
-  6: {
-    weekday: "토요일",
-    category: "영상면접 꿀팁",
-    guidance: "영상면접 화면 구성, 비율, 표정/의상/헤어 조정 팁 등 카메라 기반 실전 팁을 다룬다.",
-    example: "영상 프레임 안에서 균형감 있게 보이도록 조정하는 팁.",
-    fullExample: `[승준생들, 영상면접 "비율" 신경써야 합격해요]
-영상면접 합격/불합격 때 실제 캡쳐본 들고왔어 🤭
-합격하려면 첫눈에 딱 봤을 때 "균형잡힌 비율이다"라는 느낌을 줘야 해,
-그러려면..
-1️⃣승무원 합격하는 비율의 비밀?
-: 얼굴 상:중:하가 1:1:1이다.. 등의 연예인 얼굴 분석 영상이 있지만
-우리 연예인 준비생 아니고 승준생이잖아?
-완벽한 비율이 될 필요도 없고 ❌
-보기에 모난 부분 없이 눈이 편안한 비율을 만들어주면 돼 ⭕️
-2️⃣ 캠에 나오는 본인 얼굴의 장단점을 정확히 파악한다
-: 미감 좋은 친구들에게 팩트로 말해달라고 부탁하기.
-3️⃣ 장점은 부각시키고 단점은 완화한다
-: ex) 얼굴이 길어보일 땐? 헤어 볼륨 / 의상 활용하기.
-ex) 이목구비에 직선이 많은 편이라면? 머리와 의상에 곡선을 넣어 부드럽게 표현해주기
->> 균형잡힌 비율 완성 ✨`,
-  },
-};
+];
 
-const THEME_KEYWORDS: Record<number, string[]> = {
-  0: ["대면", "현장", "입실", "퇴실", "면접장", "장면", "답변"],
-  1: ["예상질문", "질문", "답변", "체력", "스트레스", "이미지"],
-  2: ["비전공", "전공", "서비스", "태도", "대한항공", "직무"],
-  3: ["꿀팁", "루틴", "준비", "체력", "질문의도", "습관"],
-  4: ["면접관", "표정", "시선", "긴장", "질문", "대응"],
-  5: ["팀워크", "글로벌", "사회성", "침착", "역량", "기내"],
-  6: ["영상면접", "카메라", "화면", "비율", "프레임", "의상"],
-};
+const THEME_KEYWORDS: string[][] = [
+  ["예상질문", "질문", "답변", "체력", "스트레스", "이미지"],
+  ["비전공", "전공", "서비스", "태도", "대한항공", "직무"],
+  ["꿀팁", "루틴", "준비", "체력", "질문의도", "습관"],
+  ["면접관", "표정", "시선", "긴장", "질문", "대응"],
+  ["팀워크", "글로벌", "사회성", "침착", "역량", "기내"],
+];
 
-function weekdayKstFromDate(dateKst: string): number {
-  const label = new Date(`${dateKst}T12:00:00+09:00`).toLocaleDateString("en-US", {
-    weekday: "short",
-    timeZone: "Asia/Seoul",
-  });
-  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return map[label] ?? 0;
+function businessThemeIndex(dateKst: string): number {
+  const weekday = new Date(`${dateKst}T12:00:00+09:00`).getUTCDay();
+  if (weekday === 0 || weekday === 6) {
+    throw new Error(`Weekend dates are not valid posting dates: ${dateKst}`);
+  }
+  return weekday - 1;
 }
 
 export function getWeekdayTheme(dateKst: string): WeekdayTheme {
-  return THEMES[weekdayKstFromDate(dateKst)];
+  return THEMES[businessThemeIndex(dateKst)];
 }
 
 export function isPostMatchingWeekdayTheme(dateKst: string, post: string): boolean {
-  const weekday = weekdayKstFromDate(dateKst);
-  const keywords = THEME_KEYWORDS[weekday] || [];
+  const keywords = THEME_KEYWORDS[businessThemeIndex(dateKst)] || [];
   const text = post.toLowerCase();
   return keywords.some((k) => text.includes(k.toLowerCase()));
 }
 
 export function getWeekdayThemeTable(): Array<{ weekday: string; category: string; example: string; fullExample: string }> {
-  return [
-    { weekday: "월요일", category: THEMES[1].category, example: THEMES[1].example, fullExample: THEMES[1].fullExample },
-    { weekday: "화요일", category: THEMES[2].category, example: THEMES[2].example, fullExample: THEMES[2].fullExample },
-    { weekday: "수요일", category: THEMES[3].category, example: THEMES[3].example, fullExample: THEMES[3].fullExample },
-    { weekday: "목요일", category: THEMES[4].category, example: THEMES[4].example, fullExample: THEMES[4].fullExample },
-    { weekday: "금요일", category: THEMES[5].category, example: THEMES[5].example, fullExample: THEMES[5].fullExample },
-    { weekday: "토요일", category: THEMES[6].category, example: THEMES[6].example, fullExample: THEMES[6].fullExample },
-    { weekday: "일요일", category: THEMES[0].category, example: THEMES[0].example, fullExample: THEMES[0].fullExample },
-  ];
+  return THEMES.map((theme) => ({
+    weekday: theme.weekday,
+    category: theme.category,
+    example: theme.example,
+    fullExample: theme.fullExample,
+  }));
 }
 
 export function getWeekdayThemePrompt(dateKst: string): string {

@@ -10,7 +10,7 @@ import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { getWriteMode } from "@/lib/writeMode";
 import { safeRecordCronRun } from "@/lib/cronRun";
 import { getWeekdayThemePrompt, isPostMatchingWeekdayTheme } from "@/lib/weekdayTheme";
-import { kstDate, kstWeekday } from "@/lib/kst";
+import { isKstWeekend, kstDate, kstWeekday, nextPostingDate } from "@/lib/kst";
 import type { Signal, Source } from "@/lib/types";
 
 function influencerSourcePriority(source: Source): number {
@@ -29,10 +29,25 @@ export async function GET(req: Request) {
   const quick = new URL(req.url).searchParams.get("quick") === "1";
 
   const db = supabaseAdmin();
+  if (isKstWeekend()) {
+    await safeRecordCronRun(db, {
+      cronName: "morning",
+      ok: true,
+      statusCode: 200,
+      summary: "주말은 글 작성/게시 대상 아님(스킵)",
+      details: { today: kstDate(0) },
+    });
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "weekend_no_posting",
+      today: kstDate(0),
+    });
+  }
   await syncDefaultSources(db);
   const writeMode = await getWriteMode(db);
   const today = kstDate(0);
-  const targetDate = kstDate(1);
+  const targetDate = nextPostingDate(1);
   const since = new Date();
   since.setDate(since.getDate() - 7);
 

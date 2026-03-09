@@ -38,3 +38,27 @@ export function kstWeekday(baseDate = new Date()): number {
   }).format(baseDate);
   return WEEKDAY_MAP[weekday] ?? 0;
 }
+
+export function isKstWeekend(baseDate = new Date()): boolean {
+  const weekday = kstWeekday(baseDate);
+  return weekday === 0 || weekday === 6;
+}
+
+export function nextPostingDate(offsetBusinessDays = 1, baseDate = new Date()): string {
+  let cursor = new Date(baseDate);
+  let remaining = Math.max(0, offsetBusinessDays);
+
+  while (remaining > 0) {
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    if (isKstWeekend(cursor)) continue;
+    remaining -= 1;
+  }
+
+  if (offsetBusinessDays === 0 && isKstWeekend(cursor)) {
+    do {
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    } while (isKstWeekend(cursor));
+  }
+
+  return kstDate(0, cursor);
+}

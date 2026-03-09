@@ -288,15 +288,15 @@ Python MVP보다 규칙이 훨씬 강해졌다.
 - 금지 표현 정규화 후 `sanitizeGeneratedPost()` 처리
 
 #### 요일별 카테고리
-- 월: 면접 예상질문
+- 월: 면접 예상질문 관련
 - 화: 대한항공 지원 비전공자 조언
 - 수: 승무원 준비 꿀팁
 - 목: 면접 관련
-- 금: 객실승무원 필요 역량
-- 토: 영상면접 꿀팁
-- 일: 대면 면접 관련
+- 금: 전직 승무원이 본 객실승무원 필요 역량
 
-`isPostMatchingWeekdayTheme()`는 키워드 포함 여부로만 검사한다. 의미적 일치 검증이 아니라 단순 키워드 매칭이다.
+현재 규칙은 토요일과 일요일을 게시일에서 제외한다. 따라서 카테고리는 7일 매핑이 아니라 평일 게시 흐름에 맞춰 월-화-수-목-금 5개만 반복된다. 즉 금요일 다음 게시일은 월요일이고, 카테고리도 다시 월요일 카테고리로 순환한다.
+
+`isPostMatchingWeekdayTheme()`는 해당 게시 대상일에 대응하는 키워드 포함 여부로 검사한다. 의미적 일치 검증이 아니라 단순 키워드 매칭이다.
 
 ### 3.7 게시 로직
 `/Users/hanwha/Documents/New project/threadbot/vercel/lib/threads.ts`
@@ -344,7 +344,7 @@ Python MVP보다 규칙이 훨씬 강해졌다.
 - `direct`면 최근 7일 `manual-upload` 신호 로드
 - dedupe/priority 적용
 - `signals` 테이블에 적재(`crawl`일 때만)
-- 내일 날짜 초안 생성
+- 다음 게시일 날짜 초안 생성
 - Resend 이메일 발송
 - `cron_runs` 기록
 
@@ -353,6 +353,8 @@ Python MVP보다 규칙이 훨씬 강해졌다.
 - 공식 채용 소스는 지정 요일에만 포함 (`OFFICIAL_SOURCE_WEEKDAY`)
 - `quick=1`이면 수집 소스/키워드 수를 줄인 축약 실행
 - 오늘 게시글과 내일 초안이 다른 카테고리/전개를 갖도록 extra prompt 추가
+- 주말에는 초안 생성을 스킵한다
+- 다음 초안 날짜는 단순 `내일`이 아니라 `다음 평일 게시일`이다
 
 ### 4.2 `GET /api/cron/post`
 `/Users/hanwha/Documents/New project/threadbot/vercel/app/api/cron/post/route.ts`
@@ -369,6 +371,7 @@ Python MVP보다 규칙이 훨씬 강해졌다.
 
 - `posts` 테이블에서 오늘 KST 범위 내 성공 게시가 있으면 skip
 - `force=1`일 때만 재게시 허용
+- 주말 호출 시에는 게시 자체를 스킵한다
 
 ### 4.3 `GET /api/cron/token-refresh`
 토큰 갱신 전용 cron. 성공/실패 모두 `cron_runs`에 저장한다.
@@ -508,11 +511,11 @@ Python MVP보다 규칙이 훨씬 강해졌다.
 이 절대경로는 현재 클론 위치와 다르다. 따라서 현재 워크스페이스에서는 그대로 사용하면 오작동한다.
 
 ### 7.2 Vercel cron
-`vercel/vercel.json`은 이번 조사에서 직접 열지 않았지만 `vercel/README.md`에 스케줄이 기록돼 있다.
+`/Users/hanwha/Documents/New project/threadbot/vercel/vercel.json`
 
-- KST 23:59/00:05 초안 생성
-- KST 09:00/09:30 게시
-- KST 00:10 토큰 갱신
+- KST 23:59/00:05 초안 생성, 평일만 실행
+- KST 09:00/09:30 게시, 평일만 실행
+- KST 00:10 토큰 갱신, 매일 실행
 
 ## 8. 레이어/저장소/비즈니스 로직 정리
 
@@ -672,9 +675,37 @@ Python MVP보다 규칙이 훨씬 강해졌다.
 
 현재 남아 있는 유일한 외부 의존 조건은 실제 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 값이다. 이 값이 있어야 `cron_runs`를 직접 조회해 `09:30` 스킵 여부를 원격 데이터로 확인할 수 있다.
 
+## 12. 운영 규칙 변경: 평일만 게시 + 5일 카테고리 순환
+
+### 요구사항
+- 토요일, 일요일은 게시일에서 제외
+- 카테고리는 달력 요일이 아니라 평일 게시 순서 기준으로 월-화-수-목-금 반복
+
+### 적용한 수정
+- `vercel/vercel.json`
+  - `morning`, `post` cron을 `1-5` 평일만 실행하도록 변경
+- `vercel/app/api/cron/morning/route.ts`
+  - 주말 요청 스킵
+  - `targetDate`를 `nextPostingDate(1)`로 계산
+- `vercel/app/api/cron/post/route.ts`
+  - 주말 요청 스킵
+- `vercel/lib/kst.ts`
+  - `isKstWeekend()`, `nextPostingDate()` 추가
+- `vercel/lib/weekdayTheme.ts`
+  - 주말 카테고리 제거
+  - 5개 카테고리 순환 구조로 변경
+- `vercel/app/page.tsx`
+  - `내일` 대신 `다음 게시일` 표시
+
+### 기대 효과
+- 금요일 저녁에 생성되는 다음 초안은 월요일용이 된다
+- 주말에는 자동 게시가 실행되지 않는다
+- 평일 게시 흐름이 길게 이어져도 카테고리는 월-화-수-목-금-월-화 식으로 반복된다
+
 ## 업데이트 이력
 - 2026-03-09: 초기 전체 코드베이스 분석 완료. Python MVP와 Vercel 운영형 구조를 분리해 정리함.
 - 2026-03-09: 하루 2건 게시 버그 조사 추가. `/api/cron/post` 이중 스케줄과 잘못된 KST 날짜 계산을 확인함.
 - 2026-03-09: `vercel/lib/kst.ts` 도입 및 관련 라우트/페이지의 KST 날짜 계산 교체 완료.
 - 2026-03-09: `vercel` 의존성 설치 후 production build 검증 완료.
 - 2026-03-09: Vercel CLI 설치 및 프로젝트 링크 완료. Supabase `cron_runs` 조회 스크립트와 운영 접근 문서 추가.
+- 2026-03-09: 주말 게시 제외 및 월-화-수-목-금 카테고리 순환 규칙 반영.

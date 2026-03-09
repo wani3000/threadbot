@@ -9,7 +9,7 @@ import { isOfficialRecruitSource } from "@/lib/sourceClassify";
 import { FULL_CONTENT_GUIDE, RULE_CHECKLIST } from "@/lib/contentGuide";
 import { checkThreadsTokenHealth, getThreadsTokenExpiresAt } from "@/lib/threadsToken";
 import { getWeekdayTheme, getWeekdayThemeTable } from "@/lib/weekdayTheme";
-import { kstDate } from "@/lib/kst";
+import { kstDate, nextPostingDate } from "@/lib/kst";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ function kstStartIso(dateKst: string): string {
 
 async function getHomeData() {
   const db = supabaseAdmin();
-  const tomorrow = kstDate(1);
+  const tomorrow = nextPostingDate(1);
   const now = new Date();
   const weekAgo = new Date(now);
   weekAgo.setDate(now.getDate() - 7);
@@ -258,7 +258,7 @@ export default async function HomePage() {
       <section>
         <h2>요일별 고정 카테고리</h2>
         <p>
-          내일({data.tomorrow}) 예정 카테고리: <strong>{tomorrowTheme.weekday} / {tomorrowTheme.category}</strong>
+          다음 게시일({data.tomorrow}) 예정 카테고리: <strong>{tomorrowTheme.weekday} / {tomorrowTheme.category}</strong>
         </p>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
@@ -394,7 +394,7 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2>내일 업로드 예정 글 (09:00 KST)</h2>
+        <h2>다음 게시일 업로드 예정 글 (09:00 KST)</h2>
         <TomorrowDraftPanel draftDate={data.tomorrow} />
       </section>
 

@@ -18,6 +18,11 @@
 2. 중복 방지의 기준이 되는 KST 날짜 계산이 잘못 구현돼 있다.
 3. 동일한 잘못된 KST 계산 패턴이 여러 파일에 중복돼 있다.
 
+추가 운영 요구:
+
+4. 토요일과 일요일은 게시일에서 제외해야 한다.
+5. 카테고리는 달력 요일이 아니라 평일 게시 순서 기준으로 월-화-수-목-금 반복이어야 한다.
+
 ## 접근 전략
 수정은 다음 순서로 진행한다.
 
@@ -83,6 +88,29 @@ import { kstDate, kstWeekday } from "@/lib/kst";
 node -e '/* 2026-03-08T15:00:00Z should map to 2026-03-09 KST */'
 ```
 
+### D. 평일 게시 순환 규칙
+후보 파일:
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/weekdayTheme.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/kst.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/app/api/cron/morning/route.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/app/api/cron/post/route.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/vercel.json`
+
+핵심 변경:
+
+```ts
+if (isKstWeekend()) {
+  return skip;
+}
+
+const targetDate = nextPostingDate(1);
+```
+
+```text
+cron: monday-friday only
+theme cycle: mon, tue, wed, thu, fri, mon, tue...
+```
+
 ## 코드 변경 후보 파일
 - `/Users/hanwha/Documents/New project/threadbot/README.md`
 - `/Users/hanwha/Documents/New project/threadbot/research.md`
@@ -93,6 +121,8 @@ node -e '/* 2026-03-08T15:00:00Z should map to 2026-03-09 KST */'
 - `/Users/hanwha/Documents/New project/threadbot/vercel/app/api/cron/regenerate-today/route.ts`
 - `/Users/hanwha/Documents/New project/threadbot/vercel/app/api/manual/ingest/route.ts`
 - `/Users/hanwha/Documents/New project/threadbot/vercel/app/page.tsx`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/lib/weekdayTheme.ts`
+- `/Users/hanwha/Documents/New project/threadbot/vercel/vercel.json`
 
 ## 구현 시 고려 사항
 - 기존 09:30 재시도 cron은 유지한다.
@@ -152,6 +182,16 @@ node -e '/* 2026-03-08T15:00:00Z should map to 2026-03-09 KST */'
   - `SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY`
 
+### Iteration 4
+- 상태: 평일 게시 순환 규칙 반영 완료
+- 실제 반영:
+  - 주말 게시/초안 생성 스킵
+  - cron 평일 한정
+  - 다음 게시일 계산 도입
+  - 카테고리 5일 순환 구조로 변경
+- 검증:
+  - `npm run build` 통과
+
 ### 개발자 피드백 기록 공간
 - 비어 있음
 
@@ -164,6 +204,7 @@ node -e '/* 2026-03-08T15:00:00Z should map to 2026-03-09 KST */'
 - [x] Agent: Codex - Vercel CLI 설치 및 프로젝트 링크
 - [x] Agent: Codex - Supabase `cron_runs` 조회 스크립트 추가
 - [x] Agent: Codex - 필요한 운영 env 목록 문서화
+- [x] Agent: Codex - 토/일 게시 제외 및 평일 순환 카테고리 규칙 반영
 - [ ] Agent: TBD - 운영 환경 `cron_runs` 또는 Vercel 로그에서 09:30 스킵 응답(`already_posted_today`) 확인
 
 ## 업데이트 이력

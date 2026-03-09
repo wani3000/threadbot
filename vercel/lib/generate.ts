@@ -149,6 +149,7 @@ export async function generatePostDetailed(
             "해시태그는 사용하지 않는다.",
             "사실은 [팩트]에 있는 내용만 사용한다.",
             "과장/추측/지어낸 후기 금지.",
+            "\"이번 주\", \"이번주\", \"오늘\", \"최근 일주일\", \"이번 주의 채용 업데이트\" 같은 실시간성 날짜 표현 금지.",
             "프로필 링크/개인 사이트 링크/ieumnarae.com/이음나래아카데미 문구 금지.",
             "본문/마지막 모두 링크 금지.",
             "자기 서비스 홍보 문장(제공해드려요/과외 진행 중/도와드릴게요) 금지.",
@@ -166,7 +167,7 @@ export async function generatePostDetailed(
           content: [
             `[스타일 샘플]\n${styleSample}`,
             `[팩트]\n${facts}`,
-            "오늘 주제: 최근 일주일 항공사 채용 업데이트",
+            "오늘 주제: 항공사 채용 관련 신호 정리",
             "문단 수: 4~6",
             "요청: 가이드 전부 반영해서 스레드 초안 1개 작성",
             extraPrompt ? `추가 요청: ${extraPrompt}` : "",
@@ -197,7 +198,7 @@ export async function generatePostDetailed(
             content: [
               `[스타일 샘플]\n${styleSample}`,
               `[팩트]\n${facts}`,
-              "오늘 주제: 최근 일주일 항공사 채용 업데이트",
+              "오늘 주제: 항공사 채용 관련 신호 정리",
               "문단 수: 4~6",
               "요청: 내용 밀도를 높여 풍부하게 작성",
               extraPrompt ? `추가 요청: ${extraPrompt}` : "",

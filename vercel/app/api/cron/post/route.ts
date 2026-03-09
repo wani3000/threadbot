@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { publishThreads } from "@/lib/threads";
 import { getThreadsPublishToken, isThreadsTokenError, refreshThreadsLongLivedToken, setThreadsPublishToken } from "@/lib/threadsToken";
 import { safeRecordCronRun } from "@/lib/cronRun";
-import { kstDate } from "@/lib/kst";
+import { isKstWeekend, kstDate } from "@/lib/kst";
 
 function kstDayBoundsUtc(dateKst: string): { startUtc: string; endUtc: string } {
   // KST 00:00 is UTC-9h previous day, so we build explicit UTC bounds.
@@ -21,6 +21,21 @@ export async function GET(req: Request) {
   const force = new URL(req.url).searchParams.get("force") === "1";
 
   const db = supabaseAdmin();
+  if (isKstWeekend()) {
+    await safeRecordCronRun(db, {
+      cronName: "post",
+      ok: true,
+      statusCode: 200,
+      summary: "주말은 글 게시 대상 아님(스킵)",
+      details: { draft_date: kstDate() },
+    });
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "weekend_no_posting",
+      draft_date: kstDate(),
+    });
+  }
   const today = kstDate();
   const { startUtc, endUtc } = kstDayBoundsUtc(today);
 
