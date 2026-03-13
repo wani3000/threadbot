@@ -65,6 +65,39 @@ function hasParagraphLines(text: string): boolean {
   return splitSlides(text).some((paragraph) => paragraph.split('\n').some((line) => line.trim().length > 65));
 }
 
+function hasTooManyFormalEndings(text: string): boolean {
+  const formalLines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => /(습니다|합니다)([.!?❤️🙂😊😉😌✨✈️])?$/.test(line));
+  return formalLines.length >= 4;
+}
+
+function rebalanceParagraphs(text: string): string {
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 12) return text.trim();
+
+  const paragraphCount = Math.min(6, Math.max(4, Math.round(lines.length / 5)));
+  const baseSize = Math.floor(lines.length / paragraphCount);
+  const remainder = lines.length % paragraphCount;
+  const paragraphs: string[] = [];
+  let cursor = 0;
+
+  for (let i = 0; i < paragraphCount; i += 1) {
+    const size = baseSize + (i < remainder ? 1 : 0);
+    const chunk = lines.slice(cursor, cursor + size).join("\n").trim();
+    if (chunk) paragraphs.push(chunk);
+    cursor += size;
+  }
+
+  return paragraphs.join("\n\n").trim();
+}
+
 function isTooShortPost(text: string): boolean {
   const slides = splitSlides(text);
   if (slides.length < 2) return true;
@@ -110,7 +143,7 @@ function sanitizeGeneratedPost(raw: string): string {
       if (/다음\s*슬라이드/i.test(line)) return false;
       return !banned.some((b) => low.includes(b.toLowerCase()));
     });
-  const cleaned = normalizeSentenceLines(lines.join("\n")).replace(/\n{3,}/g, "\n\n").trim();
+  const cleaned = rebalanceParagraphs(normalizeSentenceLines(lines.join("\n")).replace(/\n{3,}/g, "\n\n").trim());
   return ensureHeartEnding(cleaned);
 }
 
@@ -237,7 +270,7 @@ export async function generatePostDetailed(
       return { post: sanitizeGeneratedPost(fallbackPost(signals)), provider: "fallback", reason: "empty_model_output" };
     }
     let sanitized = sanitizeGeneratedPost(text);
-    if (isTooShortPost(sanitized) || hasRealtimeExpression(sanitized) || hasParagraphLines(sanitized)) {
+    if (isTooShortPost(sanitized) || hasRealtimeExpression(sanitized) || hasParagraphLines(sanitized) || hasTooManyFormalEndings(sanitized)) {
       const retry = await client.chat.completions.create({
         model,
         temperature: Math.max(options?.temperature ?? 0.7, 0.8),
@@ -245,7 +278,7 @@ export async function generatePostDetailed(
           {
             role: "system",
             content:
-              "이전 결과가 규칙을 지키지 못했습니다. 반드시 한 문장 한 줄로 작성하고, 4~6문단, 각 문단 4~7줄, 첫 게시글과 각 연속 스레드 문단은 모두 최소 150자 이상으로 충분히 길게 작성하세요. 1/5, 2/5 같은 넘버링 금지, \"다음 슬라이드\" 문구 금지, 링크/댓글유도/자기홍보 문장 금지, \"오늘\" \"이번 주\" 같은 실시간성 표현 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요.",
+              "이전 결과가 규칙을 지키지 못했습니다. 반드시 한 문장 한 줄로 작성하고, 4~6문단, 각 문단 4~7줄, 첫 게시글과 각 연속 스레드 문단은 모두 최소 150자 이상으로 충분히 길게 작성하세요. 1/5, 2/5 같은 넘버링 금지, \"다음 슬라이드\" 문구 금지, 링크/댓글유도/자기홍보 문장 금지, \"오늘\" \"이번 주\" 같은 실시간성 표현 금지, 마지막 문장은 ❤️, 쉬운 평서문 사용, 마무리 문장에 가끔 :)를 적용하세요. \"~합니다\" 위주 문체보다 \"~해요\", \"~보세요\", \"~거든요\" 같은 친근한 구어체로 쓰세요.",
           },
           {
             role: "user",
