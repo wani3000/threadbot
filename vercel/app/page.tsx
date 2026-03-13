@@ -25,11 +25,15 @@ async function getHomeData() {
   const weekAgo = new Date(now);
   weekAgo.setDate(now.getDate() - 7);
   const weekAgoIso = weekAgo.toISOString();
+  const officialLookback = new Date(now);
+  officialLookback.setDate(now.getDate() - 45);
+  const officialLookbackIso = officialLookback.toISOString();
 
   const [
     { data: posts },
     { data: drafts },
     { data: signals },
+    { data: officialSignals },
     { data: sources },
     { data: tomorrowDraft },
     { data: cronRuns },
@@ -39,6 +43,7 @@ async function getHomeData() {
     db.from("posts").select("draft_id,posted_at,post,publish_result").gte("posted_at", weekAgoIso).order("posted_at", { ascending: false }).limit(20),
     db.from("drafts").select("draft_date,post,status,approved,updated_at").order("draft_date", { ascending: false }).limit(5),
     db.from("signals").select("source_name,title,link,summary,published_at,airline,role,confidence").gte("created_at", weekAgoIso).order("published_at", { ascending: false }).limit(200),
+    db.from("signals").select("source_name,source_url,title,link,summary,published_at,airline,role,confidence").gte("created_at", officialLookbackIso).order("published_at", { ascending: false }).limit(400),
     db.from("sources").select("name,url,enabled").order("created_at", { ascending: true }),
     db.from("drafts").select("draft_date,post,status,approved,updated_at,source_json").eq("draft_date", tomorrow).maybeSingle(),
     db.from("cron_runs").select("cron_name,run_at,ok,status_code,summary,details").order("run_at", { ascending: false }).limit(30),
@@ -62,6 +67,7 @@ async function getHomeData() {
     posts: (posts || []).filter((row: { publish_result?: { ok?: boolean } | null }) => row.publish_result?.ok === true),
     drafts: drafts || [],
     signals: (signals || []) as Signal[],
+    officialSignals: (officialSignals || []) as Signal[],
     sources: sources || [],
     tomorrowDraft: tomorrowDraft || null,
     todayDraft: todayDraft || null,
@@ -121,11 +127,28 @@ function seriesRecommended(signals: Signal[]) {
   ];
 }
 
-function ongoingOfficialCabin(signals: Signal[], todayKstIso: string) {
+function parseDeadlineDate(text: string, baseYear: number): string | null {
+  const match = text.match(/(?:~|까지|마감)?\s*(\d{1,2})[./-](\d{1,2})/);
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  if (!Number.isFinite(month) || !Number.isFinite(day)) return null;
+  const date = new Date(Date.UTC(baseYear, month - 1, day));
+  if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+function ongoingOfficialCabin(signals: Signal[], todayKst: string) {
+  const baseYear = Number(todayKst.slice(0, 4));
   return signals
     .filter((s) => isOfficialRecruitSource({ name: s.source_name || "", url: s.source_url || "" }))
     .filter((s) => /승무원|객실|cabin|flight attendant/i.test(`${s.title} ${s.summary} ${s.role || ""}`))
-    .filter((s) => !s.published_at || s.published_at >= todayKstIso)
+    .filter((s) => {
+      const text = `${s.title} ${s.summary}`;
+      const deadline = parseDeadlineDate(text, baseYear);
+      if (deadline) return deadline >= todayKst;
+      return true;
+    })
     .slice(0, 30);
 }
 
@@ -193,10 +216,10 @@ function summarizePublishResult(result: unknown): string {
 
 export default async function HomePage() {
   const data = await getHomeData();
-  const todayKstIso = kstStartIso(kstDate(0));
+  const todayKst = kstDate(0);
   const recos = recommended(data.signals);
   const seriesRecos = seriesRecommended(data.signals);
-  const ongoingCabinRows = ongoingOfficialCabin(data.signals, todayKstIso);
+  const ongoingCabinRows = ongoingOfficialCabin(data.officialSignals, todayKst);
   const keywordRows = keywordStats(data.signals);
   const activeSources = data.sources.filter((s: { enabled: boolean; url: string }) => s.enabled && /^https?:\/\//i.test(s.url));
   const tomorrowSignals = ((data.tomorrowDraft as { source_json?: Signal[] } | null)?.source_json || []) as Signal[];

@@ -123,6 +123,52 @@ export async function GET(req: Request) {
 
   const latestSuccessfulPost = (latestPostRows || []).find((row) => row.publish_result?.ok === true) || null;
   const latestPostText = String(latestSuccessfulPost?.post || "").trim();
+
+  const { data: existingDraft, error: existingDraftErr } = await db
+    .from("drafts")
+    .select("draft_date,status,approved,updated_at")
+    .eq("draft_date", targetDate)
+    .maybeSingle();
+  if (existingDraftErr) {
+    await safeRecordCronRun(db, {
+      cronName: "morning",
+      ok: false,
+      statusCode: 500,
+      summary: "기존 초안 조회 실패",
+      details: { error: String(existingDraftErr), targetDate },
+    });
+    return serverErrorResponse("api/cron/morning existing-draft", existingDraftErr);
+  }
+
+  const shouldKeepExistingDraft =
+    !quick &&
+    existingDraft &&
+    ["pending", "approved", "edited", "regenerated", "publishing", "posted"].includes(existingDraft.status || "");
+  if (shouldKeepExistingDraft) {
+    const editUrl = `${baseUrl()}/edit?date=${targetDate}`;
+    await safeRecordCronRun(db, {
+      cronName: "morning",
+      ok: true,
+      statusCode: 200,
+      summary: "기존 초안 유지(스킵)",
+      details: {
+        quick,
+        writeMode,
+        targetDate,
+        draftStatus: existingDraft.status,
+        includeOfficialToday,
+      },
+    });
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "draft_already_exists",
+      targetDate,
+      draftStatus: existingDraft.status,
+      editUrl,
+    });
+  }
+
   const composed = await composeDraftPost({
     targetDate,
     signals,

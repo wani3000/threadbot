@@ -6,18 +6,28 @@ let client: ReturnType<typeof createClient> | null = null;
 let cachedUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 let cachedKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "";
 let configLoaded = false;
+let configPromise: Promise<void> | null = null;
 
 async function loadRuntimeConfig(): Promise<void> {
   if (configLoaded) return;
-  configLoaded = true;
-  try {
-    const res = await fetch("/api/admin/config", { cache: "no-store" });
-    const data = await res.json().catch(() => ({}));
-    if (!cachedUrl) cachedUrl = data?.supabaseUrl || "";
-    if (!cachedKey) cachedKey = data?.publishableKey || "";
-  } catch (error) {
-    console.error("[supabaseBrowser.loadRuntimeConfig]", error);
+  if (!configPromise) {
+    configPromise = (async () => {
+      try {
+        const res = await fetch("/api/admin/config", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!cachedUrl) cachedUrl = data?.supabaseUrl || "";
+        if (!cachedKey) cachedKey = data?.publishableKey || "";
+        if (cachedUrl && cachedKey) {
+          configLoaded = true;
+        }
+      } catch (error) {
+        console.error("[supabaseBrowser.loadRuntimeConfig]", error);
+      } finally {
+        configPromise = null;
+      }
+    })();
   }
+  await configPromise;
 }
 
 export function getSupabaseBrowserClient() {
