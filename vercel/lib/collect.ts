@@ -53,6 +53,74 @@ function isOfficialRecruitUrl(raw: string): boolean {
   );
 }
 
+function stripHtml(raw: string): string {
+  return raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function toAbsoluteUrl(base: string, href: string): string | null {
+  try {
+    const url = new URL(href, base);
+    if (!/^https?:$/i.test(url.protocol)) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+function buildOfficialSignal(source: Source, loc: string, published: Date | null, anchorText?: string): Signal {
+  const pageName = anchorText?.trim() || loc.split("/").pop() || "apply";
+  const summaryBase = anchorText?.trim() || "공식 채용 페이지가 갱신되었습니다. 모집요강/일정은 원문에서 확인하세요.";
+  return {
+    source_name: source.name,
+    source_url: source.url,
+    title: `공식 채용 페이지 업데이트: ${pageName.slice(0, 80)}`,
+    link: loc,
+    published_at: published ? published.toISOString() : null,
+    airline: parseAirline(`${source.name} ${source.url} ${loc} ${anchorText || ""}`),
+    role: /cabin|crew|flight-attendant|flight_attendant|객실|승무원/i.test(`${loc} ${anchorText || ""}`) ? "승무원" : null,
+    summary: summaryBase.slice(0, 220),
+    confidence: "high" as const,
+  };
+}
+
+async function collectOfficialRecruitFromHtml(source: Source, sinceIso: string): Promise<Signal[]> {
+  try {
+    const res = await fetchWithTimeout(
+      source.url,
+      { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0 Threadbot/1.0" } },
+      Number(process.env.SOURCE_FETCH_TIMEOUT_MS || "8000"),
+    );
+    if (!res.ok) return [];
+    const html = await res.text();
+    const sourceHost = new URL(source.url).host.replace(/^www\./, "");
+    const since = new Date(sinceIso);
+    const found = new Map<string, Signal>();
+
+    const pageText = stripHtml(html).slice(0, 5000);
+    if (isOfficialRecruitUrl(source.url) && /채용|모집|승무원|객실|cabin|flight attendant/i.test(pageText)) {
+      found.set(source.url, buildOfficialSignal(source, source.url, since, "공식 채용 메인 페이지"));
+    }
+
+    const anchorRegex = /<a\b[^>]*href=(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = anchorRegex.exec(html))) {
+      const href = match[2] || "";
+      const text = stripHtml(match[3] || "");
+      const absolute = toAbsoluteUrl(source.url, href);
+      if (!absolute) continue;
+      const absoluteHost = new URL(absolute).host.replace(/^www\./, "");
+      if (absoluteHost !== sourceHost) continue;
+      if (!isOfficialRecruitUrl(absolute) && !looksLikeRecruitPath(absolute)) continue;
+      if (!/채용|모집|승무원|객실|cabin|flight attendant|recruit|hiring/i.test(`${text} ${absolute}`)) continue;
+      found.set(absolute, buildOfficialSignal(source, absolute, since, text || undefined));
+    }
+
+    return [...found.values()];
+  } catch {
+    return [];
+  }
+}
+
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -114,44 +182,37 @@ export async function collectFromSource(source: Source, sinceIso: string): Promi
     return collectFromNaverBlogRss(source, sinceIso);
   }
 
-  const url = new URL(source.url);
-  const sitemapUrl = `${url.protocol}//${url.host}/sitemap.xml`;
-  const res = await fetchWithTimeout(sitemapUrl, { cache: "no-store" }, Number(process.env.SOURCE_FETCH_TIMEOUT_MS || "8000"));
-  if (!res.ok) return [];
+  try {
+    const url = new URL(source.url);
+    const sitemapUrl = `${url.protocol}//${url.host}/sitemap.xml`;
+    const res = await fetchWithTimeout(sitemapUrl, { cache: "no-store" }, Number(process.env.SOURCE_FETCH_TIMEOUT_MS || "8000"));
+    if (res.ok) {
+      const xml = await res.text();
+      const parsed = await parseStringPromise(xml, { explicitArray: false, trim: true });
+      const rows = parsed?.urlset?.url;
+      if (rows) {
+        const list = Array.isArray(rows) ? rows : [rows];
+        const since = new Date(sinceIso);
+        const sitemapSignals = list
+          .map((row: { loc?: string; lastmod?: string }) => {
+            const loc = row.loc || "";
+            const lastmod = row.lastmod || null;
+            const published = lastmod ? new Date(lastmod) : null;
+            return { loc, published };
+          })
+          .filter((row: { loc: string; published: Date | null }) => looksLikeRecruitPath(row.loc) || isOfficialRecruitUrl(row.loc))
+          .filter((row: { loc: string; published: Date | null }) => !row.published || row.published >= since)
+          .map((row: { loc: string; published: Date | null }) => buildOfficialSignal(source, row.loc, row.published));
+        if (sitemapSignals.length > 0) {
+          return sitemapSignals;
+        }
+      }
+    }
+  } catch {
+    // Fall through to HTML parsing below.
+  }
 
-  const xml = await res.text();
-  const parsed = await parseStringPromise(xml, { explicitArray: false, trim: true });
-  const rows = parsed?.urlset?.url;
-  if (!rows) return [];
-
-  const list = Array.isArray(rows) ? rows : [rows];
-  const since = new Date(sinceIso);
-
-  return list
-    .map((row: { loc?: string; lastmod?: string }) => {
-      const loc = row.loc || "";
-      const lastmod = row.lastmod || null;
-      const published = lastmod ? new Date(lastmod) : null;
-      return { loc, published };
-    })
-    .filter((row: { loc: string; published: Date | null }) => row.loc.includes("/career/") && looksLikeRecruitPath(row.loc))
-    .filter((row: { loc: string; published: Date | null }) => !row.published || row.published >= since)
-    .map((row: { loc: string; published: Date | null }) => {
-      const pageName = row.loc.split("/").pop() || "apply";
-      const title = `공식 채용 페이지 업데이트: ${pageName}`;
-      const summary = "공식 채용 페이지가 갱신되었습니다. 모집요강/일정은 원문에서 확인하세요.";
-      return {
-        source_name: source.name,
-        source_url: source.url,
-        title,
-        link: row.loc,
-        published_at: row.published ? row.published.toISOString() : null,
-        airline: parseAirline(`${source.name} ${source.url} ${row.loc}`),
-        role: /cabin|crew|flight-attendant|flight_attendant|객실|승무원/i.test(row.loc) ? "승무원" : null,
-        summary,
-        confidence: "high" as const,
-      };
-    });
+  return collectOfficialRecruitFromHtml(source, sinceIso);
 }
 
 async function collectFromNaverBlogRss(source: Source, sinceIso: string): Promise<Signal[]> {

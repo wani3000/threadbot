@@ -21,16 +21,39 @@ export function assertEnv(): void {
   }
 }
 
+function expectedHost(): string | null {
+  try {
+    return new URL(baseUrl()).host.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function hasTrustedVercelCronHeaders(req: Request): boolean {
+  const cronHeader = req.headers.get("x-vercel-cron");
+  if (!cronHeader) return false;
+
+  const vercelId = req.headers.get("x-vercel-id") || "";
+  const ua = (req.headers.get("user-agent") || "").toLowerCase();
+  const forwardedHost = (req.headers.get("x-forwarded-host") || req.headers.get("host") || "").toLowerCase();
+  const host = expectedHost();
+
+  const hostMatches = !host || !forwardedHost || forwardedHost === host;
+  const looksLikeVercel = ua.includes("vercel");
+
+  return Boolean(vercelId) && hostMatches && looksLikeVercel;
+}
+
 export function isAuthorizedCron(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
-  const hasVercelCronHeader = req.headers.has("x-vercel-cron");
+  const trustedManagedCall = hasTrustedVercelCronHeaders(req);
   if (!secret) {
-    return hasVercelCronHeader;
+    return trustedManagedCall;
   }
   const auth = req.headers.get("authorization") || "";
   if (auth === `Bearer ${secret}`) return true;
-  // Allow Vercel-managed cron invocations when the platform attaches its own cron header.
-  return hasVercelCronHeader;
+  // Allow Vercel-managed cron invocations only when the expected Vercel headers match.
+  return trustedManagedCall;
 }
 
 export function baseUrl(): string {
