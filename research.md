@@ -22,6 +22,7 @@
 - `vercel/lib/generate.ts`
 - `vercel/lib/contentGuide.ts`
 - `vercel/lib/postingTheme.ts`
+- `vercel/lib/draftComposer.ts`
 
 ### 검수/운영 레이어
 - `vercel/app/page.tsx`
@@ -36,6 +37,7 @@
 - `cron_runs`
 - `posts`
 - Threads 토큰 상태 카드
+- 오늘 게시 추적 카드
 
 ## 3. 데이터 구조
 ### `sources`
@@ -150,6 +152,7 @@
 10. 직전 게시글과 주제/훅/사례가 겹치지 않게 추가 프롬프트 적용
 11. 초안 저장 + 이메일 발송 + cron 로그 기록
 12. 생성/재작성 모두 `draftComposer.ts` 공통 규칙 엔진을 사용한다
+13. 동일 `targetDate`의 유효 초안이 이미 있으면 기본 cron은 덮어쓰지 않고 스킵한다
 
 ## 8. 재작성 경로
 ### 수동 재작성 cron
@@ -163,47 +166,95 @@
 - `crawl` / `direct` 모드에 따라 입력 source를 다르게 선택
 - 기존 글과 동일하면 훅을 바꾸고, 주제 불일치면 재시도
 
-## 9. 대시보드 구성
-### 메인
-- 마지막 cron 실행 결과
-- Threads 토큰 상태
-- 관리자 로그인 상태
-- 작성 방식 선택
-- 평일 게시 시 7개 주제 순환 표
-- 최근 실제 게시글
-- 추천 글 샘플
-- 키워드별 수집 건수/상위 글
-- 진행 중 공식 캐빈 채용
-- 수집 URL 관리
-- 다음 게시일 초안 미리보기
-- 다음 게시일 글 작성을 위한 수집 요약
-- 전체 글 규칙
+## 9. 수집 로직 최신 사실
+### 구현 위치
+- `vercel/lib/collect.ts`
 
-### 편집
-- `vercel/app/edit/page.tsx`
-- 초안 조회/수정/승인
+### 현재 동작
+- Naver 블로그는 RSS 우선
+- 일반/공식 소스는 sitemap 우선
+- sitemap이 비거나 공고 신호를 못 주면 HTML fallback으로 전환
+- HTML fallback은 아래를 시도한다
+  - 공식 채용 메인 페이지 본문 자체가 공고성 키워드를 가지는지 확인
+  - 페이지 내 anchor를 파싱해 같은 호스트의 공고성 링크를 추출
+  - 채용/승무원/캐빈/crew 관련 키워드와 recruit/career/apply 계열 경로를 함께 본다
 
-### 직접 입력
-- `vercel/app/upload/page.tsx`
-- 긴 텍스트를 저장해 `direct` 모드 입력으로 사용
+### 운영 중 확인한 실제 사이트 반응
+- `https://recruit.koreanair.com`
+  - collector 환경에서 anti-bot HTML 응답이 관찰됨
+- `https://flyasiana.com/...`
+  - HTTP/2 internal error가 관찰됨
+- `https://recruit.jejuair.net`
+  - SSL hostname mismatch가 관찰됨
+- 일부 `recruiter.co.kr`/기타 공식 도메인
+  - DNS 실패가 간헐적으로 발생함
 
-## 10. 관찰된 설계 특징
+즉, 공식 채용 수집은 이전보다 좋아졌지만 아직 사이트 상태와 네트워크 환경에 민감하다.
+
+## 10. 인증/cron 경계 최신 사실
+### 구현 위치
+- `vercel/lib/env.ts`
+
+### 현재 동작
+- `Authorization: Bearer CRON_SECRET`가 맞으면 허용
+- 또는 Vercel managed cron으로 판단되는 강화된 헤더 조합이면 허용
+  - `x-vercel-cron`
+  - `x-vercel-id`
+  - Vercel user-agent
+  - `APP_BASE_URL`과 host 정합성
+
+### 해석
+- 예전처럼 단순 UA 위장으로 통과되지는 않는다
+- 다만 여전히 플랫폼 헤더를 신뢰하는 부분이 있어, 장기적으로는 `CRON_SECRET` 중심 단일 경로 또는 내부 전용 경로가 더 안전하다
+
+## 11. 대시보드 최신 사실
+### 구현 위치
+- `vercel/app/page.tsx`
+- `vercel/lib/supabaseBrowser.ts`
+
+### 현재 동작
+- 대시보드 상단에 마지막 cron 실행 결과 카드가 있다
+- 오늘 게시 추적 카드가 있다
+- Threads 토큰 만료일/잔여일/활성 상태를 보여준다
+- `app_settings` 사용 가능 여부를 보여준다
+- 공식 채용 카드는 최근 45일 공식 신호를 따로 조회하고 마감일 텍스트를 파싱한다
+- 브라우저용 Supabase 공개 설정 로딩이 실패해도 다시 시도 가능하다
+
+## 12. 배포본에서 확인된 운영 상태
+- 공개 설정 API 응답은 정상이다: `/api/admin/config`
+- 대시보드 HTML에 아래가 실제 반영돼 있다
+  - `ieumnarae-threadbot Dashboard`
+  - `마지막 Cron 실행 결과`
+  - `오늘 게시 추적`
+  - `평일 게시 시 7개 주제 순환`
+  - `설정 저장소 상태: app_settings 사용 가능`
+- Threads 토큰 상태는 대시보드에 만료일과 잔여일로 노출된다
+
+## 13. 관찰된 설계 특징
 1. Python MVP와 운영형 Next.js가 병존한다.
 2. `app_settings` 도입 전 흔적 때문에 `sources` 특수 row fallback이 남아 있다.
 3. `signals`는 크롤링 결과와 직접 업로드를 함께 담는 다목적 저장소다.
 4. 생성 규칙은 프롬프트뿐 아니라 후처리와 게시 직전 단계에서 중복으로 강제된다.
 5. 현재 운영 핵심은 `postingTheme.ts`, `draftComposer.ts`, `threads.ts`, `cron` 라우트다.
+6. 공식 채용 수집은 “0건 회피” 수준까지는 올라왔지만, 여전히 휴리스틱 기반이다.
 
-## 11. 현재 결론
+## 14. 현재 결론
 - 이 시스템의 실운영 기준은 `vercel/`이다.
 - 주말 게시 없음, 평일 게시만 허용된다.
 - 주제는 달력 요일이 아니라 평일 게시 순서 기준 7개 순환이다.
 - 글 생성 규칙은 코드상 다중 단계로 강제된다.
-- 앞으로 변경 시 가장 먼저 맞춰야 할 파일은 아래다.
-  - `vercel/lib/postingTheme.ts`
-  - `vercel/lib/contentGuide.ts`
-  - `vercel/lib/generate.ts`
-  - `vercel/lib/threads.ts`
-  - `vercel/app/api/cron/morning/route.ts`
-  - `vercel/app/api/drafts/[draftDate]/route.ts`
-  - `vercel/app/page.tsx`
+- 중복 게시와 이전 날짜 초안 fallback 문제는 현재 코드상 차단되어 있다.
+- cron 인증은 이전보다 강화됐지만, 장기적으로는 더 닫힌 구조로 갈 여지가 있다.
+- 공식 채용 수집은 HTML fallback까지 들어갔지만, 사이트별 전용 파서가 붙으면 더 좋아질 수 있다.
+
+## 15. 다음 에이전트가 먼저 볼 파일
+- `vercel/lib/postingTheme.ts`
+- `vercel/lib/contentGuide.ts`
+- `vercel/lib/generate.ts`
+- `vercel/lib/threads.ts`
+- `vercel/lib/collect.ts`
+- `vercel/lib/env.ts`
+- `vercel/app/api/cron/morning/route.ts`
+- `vercel/app/api/cron/post/route.ts`
+- `vercel/app/api/drafts/[draftDate]/route.ts`
+- `vercel/app/page.tsx`

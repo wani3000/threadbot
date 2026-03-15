@@ -69,24 +69,71 @@
 - `요일별 고정 카테고리`가 아니라 `평일 게시 시 7개 주제 순환`으로 표시
 - 다음 게시일 주제와 전체 순환표를 보여준다
 
-## 완료 상태
-- [x] 평일만 게시 / 주말 스킵
-- [x] KST 날짜 계산 공통화
-- [x] 하루 1회 게시 가드
-- [x] 첫 게시/연속 게시 최소 150자
-- [x] 7개 주제 순환 로직 도입
-- [x] 생성 가이드 자기모순 제거
+## Todo List
+### Done
+- [x] PT-54/PT-55 이어쓰기형 Threads 생성/저장/게시 파이프라인 구축
+- [x] PT-56 전체 코드 검토 및 운영 규칙 정렬 리팩토링
+- [x] PT-57 reply 게시 재시도 및 부분 성공 상태 저장 보강
+- [x] KST 날짜 계산 공통화 및 `scheduledPostingDate()` 도입
 - [x] 이전 날짜 초안 fallback 제거
-- [x] `publishing` 잠금 도입
+- [x] `publishing` 잠금 도입과 하루 1회 게시 가드 정착
 - [x] detached standalone fallback 제거
-- [x] 설정 저장 `app_settings` 우선화
-- [x] 초안 생성/재작성 공통화
-- [x] 재작성 API에 동일 규칙 적용
-- [x] 대시보드 문구/표 정리
-- [x] 문서 3종 최신 규칙 기준 업데이트
+- [x] 생성/재작성 공통 규칙 엔진 도입
+- [x] `app_settings` 우선화 및 대시보드 상태 반영
+- [x] `morning` 백업 cron이 기존 초안을 덮어쓰지 않도록 수정
+- [x] 브라우저 Supabase 공개 설정 로딩 재시도 가능화
+- [x] 공식 채용 수집의 sitemap 실패 시 HTML fallback 확장
+- [x] 대시보드 진행중 공식 채용 카드의 45일 lookback + 마감일 파싱 보강
+- [x] 문서 3종과 대시보드 문구 최신 운영 규칙 기준으로 정렬
+
+### In Progress
+- [ ] Jira 미생성: cron 인증을 `CRON_SECRET` 중심 단일 경로 또는 내부 호출 전용 구조로 추가 강화
+  - 현재 상태: `Authorization: Bearer CRON_SECRET` 또는 강화된 Vercel cron 헤더 조합으로 동작한다.
+  - 남은 이유: 플랫폼 헤더 신뢰를 완전히 제거하지는 못했다.
+- [ ] Jira 미생성: 공식 채용 사이트별 전용 파서 추가
+  - 현재 상태: sitemap 실패 시 HTML fallback까지 구현되어 0건 수집 가능성은 줄었다.
+  - 남은 이유: 대한항공 anti-bot, 아시아나/제주항공의 HTTP/SSL/DNS 편차처럼 사이트별 예외가 남아 있다.
+
+## Jira 상태 정리
+- 확인한 threadbot 관련 visible 이슈
+  - PT-54: Done
+  - PT-55: Done
+  - PT-56: Done
+  - PT-57: Done
+- PT-58 `[INFRA] Threads 인사이트 마이그레이션 적용 및 live sync 검증`은 현재 저장소 작업 범위와 무관하며 To Do 상태가 맞다.
+- 일반 Atlassian search 앱은 이 인스턴스에 설치되지 않아 전역 검색은 403이 발생했다. Jira 상태 확인은 `project = PT` JQL 기준으로 수행했다.
+- 이번 인계 시점에 상태 불일치로 수정이 필요한 visible 이슈는 없었다.
+
+## UI 승인 대기
+- 없음
+
+## Iteration
+### 2026-03-15 인계 메모
+- 완료한 작업 요약
+  - 배포본과 저장소를 다시 맞춰 점검했다.
+  - `app_settings` 적용 상태와 대시보드 표시를 확인했다.
+  - `2026-03-16` 초안을 `crawl` 기반으로 재생성하고, 반복 fallback 글이 아니라는 점을 확인했다.
+  - cron 인증을 느슨한 UA 기반 허용에서 강화된 헤더 조합 허용으로 바꿨다.
+  - 공식 채용 수집은 sitemap 실패 시 HTML fallback으로 공고성 링크/메인 페이지를 다시 잡도록 보강했다.
+  - `morning` 백업 cron의 초안 덮어쓰기, Supabase 브라우저 공개 설정 재시도, 대시보드 공식 채용 카드 판정도 함께 정리했다.
+- 미완료 작업 및 현재 상태
+  - cron 인증은 더 강화할 수 있다. 현재도 운영 가능하지만, 장기적으로는 `CRON_SECRET` 중심 단일 경로 또는 내부 전용 경로로 더 좁히는 편이 좋다.
+  - 공식 채용 수집은 HTML fallback까지 들어갔지만 아직 휴리스틱이다. 사이트별 파서를 붙이면 정확도가 더 올라간다.
+- 작업 중 발견한 이슈/주의사항
+  - `https://recruit.koreanair.com`은 collector 환경에서 anti-bot 페이지를 반환했다.
+  - `https://flyasiana.com/...`는 HTTP/2 internal error, `https://recruit.jejuair.net`은 SSL hostname mismatch를 보였다.
+  - 일부 `recruiter.co.kr`/기타 공식 도메인은 DNS 실패가 간헐적으로 있었다. 이 때문에 공식 채용 수집은 네트워크/사이트 상태에 민감하다.
+  - 공식 채용 카드와 초안 품질은 좋아졌지만, “절대 정확한 진행중 공고 판정”은 아직 아니다.
+- 다음 에이전트 작업 순서
+  1. Jira 미생성: cron 인증 2차 강화
+  2. Jira 미생성: 대한항공/아시아나/제주항공/`recruiter.co.kr` 사이트별 파서 추가
+  3. 배포본에서 다음 평일 실제 cron 결과를 한 번 더 관찰해 중복 게시/반복 글 재발 여부 확인
+- 막히거나 판단이 필요한 부분
+  - anti-bot 또는 브라우저 기반 렌더링이 필요한 공식 채용 페이지는 서버 fetch만으로는 한계가 있다. 필요하면 Playwright 계열 수집 또는 수동 확인 정책이 필요할 수 있다.
+- UI 승인 대기 중인 이슈 목록
+  - 없음
 
 ## 남은 운영 체크
-- Supabase에 `app_settings` 테이블이 없는 기존 프로젝트라면 `schema.sql` 기준으로 추가
 - 실제 운영 env에서 `POSTING_THEME_ROTATION_START_DATE`를 변경할 필요가 있는지 확인
 - 배포 후 대시보드에서 다음 게시일 주제가 기대 순서대로 나오는지 확인
 - cron 실행 로그에서 `morning/post`가 주말에 스킵되는지 확인
